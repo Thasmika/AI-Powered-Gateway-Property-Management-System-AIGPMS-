@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.database.session import engine, Base, SessionLocal
 from app.database.init_db import init_db
-from app.api.endpoints import auth, master_data, properties, title_deeds, investment
+from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership
 
 # ── Register ALL models with SQLAlchemy metadata ──────────────────────────────
 # This must happen BEFORE create_all() so every table is created on startup.
@@ -49,6 +49,7 @@ app.include_router(master_data.router, prefix=f"{settings.API_V1_STR}/master", t
 app.include_router(properties.router, prefix=f"{settings.API_V1_STR}/properties", tags=["Properties"])
 app.include_router(title_deeds.router, prefix=f"{settings.API_V1_STR}/title-deeds", tags=["Title Deeds"])
 app.include_router(investment.router, prefix=f"{settings.API_V1_STR}/investment", tags=["Investment"])
+app.include_router(ownership.router, prefix=f"{settings.API_V1_STR}/ownership", tags=["Ownership & Beneficiaries"])
 
 # ── Health & Root ─────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])

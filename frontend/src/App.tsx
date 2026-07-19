@@ -26,6 +26,10 @@ import TitleDeedDetail from './pages/title-deeds/TitleDeedDetail';
 import PropertyValuationEntry from './pages/title-deeds/PropertyValuationEntry';
 import InvestmentDashboard from './pages/dashboard/InvestmentDashboard';
 
+// Sprint 3 - Ownership & Beneficiaries
+import OwnershipList from './pages/ownership/OwnershipList';
+import OwnershipDetail from './pages/ownership/OwnershipDetail';
+
 // Generic placeholder page for role authorization testing
 const ModulePlaceholder: React.FC<{ name: string }> = ({ name }) => {
   return (
@@ -129,7 +133,15 @@ const App: React.FC = () => {
                 path="ownership"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ModulePlaceholder name="Ownership & Beneficiaries" />
+                    <OwnershipList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="ownership/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <OwnershipDetail />
                   </ProtectedRoute>
                 }
               />

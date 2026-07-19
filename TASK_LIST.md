@@ -96,15 +96,15 @@
 > **Milestone:** Co-ownership structures are recorded with percentage validation. Beneficiary income splits are tracked with IBAN.
 
 ### Backend
-- [ ] Create `schemas/ownership.py` — Owner, OwnershipRecord, BeneficiaryAllocation
-- [ ] Create `api/endpoints/ownership.py` — CRUD for owners, ownership records, beneficiary allocations
-- [ ] Add validation: ownership percentages must total 100% across all co-owners per property
-- [ ] Add validation: beneficiary allocation percentages must total 100%
-- [ ] Register ownership router in `main.py`
+- [x] Create `schemas/ownership.py` — Owner, OwnershipRecord, BeneficiaryAllocation
+- [x] Create `api/endpoints/ownership.py` — CRUD for owners, ownership records, beneficiary allocations
+- [x] Add validation: ownership percentages must total 100% across all co-owners per property
+- [x] Add validation: beneficiary allocation percentages must total 100%
+- [x] Register ownership router in `main.py`
 
 ### Frontend
-- [ ] Create `pages/OwnershipList.tsx` — property-wise ownership view with percentage bars
-- [ ] Create `pages/OwnershipDetail.tsx` — co-owners, shares %, effective dates, beneficiary bank accounts and IBANs
+- [x] Create `pages/OwnershipList.tsx` — property-wise ownership view with percentage bars
+- [x] Create `pages/OwnershipDetail.tsx` — co-owners, shares %, effective dates, beneficiary bank accounts and IBANs
 
 ---
 
