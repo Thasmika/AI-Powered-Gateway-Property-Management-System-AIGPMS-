@@ -483,6 +483,17 @@
 - [ ] Run smoke test on production
 - [ ] Notify stakeholders of go-live
 
+## Sprint 10: Production Deployment
+**Goal:** Deploy to AWS (Staging).
+- [x] Create an AWS account (PM provided).
+- [x] Configure IAM user for deployment.
+- [x] Provision EC2, RDS (PostgreSQL), and S3 buckets.
+- [x] Install dependencies on EC2 (Nginx, Python, Node.js).
+- [x] Configure PostgreSQL schema on RDS.
+- [x] Set up Gunicorn and Nginx for the FastAPI backend.
+- [x] Build and deploy the React frontend to S3.
+- [x] Run end-to-end tests in the Staging Environment.
+
 ---
 
 ## ⚠️ Pending Business Decisions (Awaiting PM Confirmation in SRS)

@@ -12,12 +12,7 @@ import app.models  # noqa: F401  — triggers models/__init__.py which imports a
 # Initialize Database tables (creates all 35+ tables if not exist)
 Base.metadata.create_all(bind=engine)
 
-# Seed initial data (roles, default admin user)
-db = SessionLocal()
-try:
-    init_db(db)
-finally:
-    db.close()
+# Seed initial data (roles, default admin user) is now handled by deploy_app.sh or a startup script
 
 # ── FastAPI Application ───────────────────────────────────────────────────────
 app = FastAPI(

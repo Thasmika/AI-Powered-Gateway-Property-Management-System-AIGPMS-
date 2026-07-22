@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List, Decimal
+from typing import Optional, List
+from decimal import Decimal
 from datetime import datetime, date
 
 class OwnerBase(BaseModel):
