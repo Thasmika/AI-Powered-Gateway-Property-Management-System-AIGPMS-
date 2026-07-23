@@ -82,6 +82,14 @@ const App: React.FC = () => {
                 }
               />
               <Route
+                path="properties/:propertyId/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <PropertyEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="properties/:propertyId"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>

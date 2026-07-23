@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar
 } from '@mui/material';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const PropertyEntry: React.FC = () => {
+  const { propertyId } = useParams<{ propertyId: string }>();
+  const isEditMode = Boolean(propertyId);
   const { token } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -26,7 +28,40 @@ const PropertyEntry: React.FC = () => {
   });
   
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchProperty = async () => {
+        try {
+          const res = await fetch(`${API}/properties/${propertyId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) throw new Error('Failed to fetch property details');
+          const data = await res.json();
+          setFormData({
+            property_code: data.property_code || '',
+            property_name: data.property_name || '',
+            property_type: data.property_type || 'Apartment',
+            building_name: data.building_name || '',
+            community: data.community || '',
+            emirate: data.emirate || 'Dubai',
+            address_line_1: data.address_line_1 || '',
+            address_line_2: data.address_line_2 || '',
+            total_units: data.total_units?.toString() || '',
+            total_area_sqft: data.total_area_sqft?.toString() || '',
+            status: data.status || 'Active'
+          });
+        } catch (e: any) {
+          setError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchProperty();
+    }
+  }, [isEditMode, propertyId, token]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -48,8 +83,11 @@ const PropertyEntry: React.FC = () => {
         total_area_sqft: formData.total_area_sqft ? parseFloat(formData.total_area_sqft) : null
       };
 
-      const res = await fetch(`${API}/properties`, {
-        method: 'POST',
+      const url = isEditMode ? `${API}/properties/${propertyId}` : `${API}/properties`;
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -59,11 +97,11 @@ const PropertyEntry: React.FC = () => {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.detail || 'Failed to create property');
+        throw new Error(err.detail || `Failed to ${isEditMode ? 'update' : 'create'} property`);
       }
       
-      const newProp = await res.json();
-      navigate(`/properties/${newProp.property_id}`);
+      const savedProp = await res.json();
+      navigate(`/properties/${savedProp.property_id}`);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -71,13 +109,15 @@ const PropertyEntry: React.FC = () => {
     }
   };
 
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
+
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
         <Avatar sx={{ bgcolor: '#6366f120', color: '#6366f1', width: 48, height: 48 }}>
           <DomainAddIcon />
         </Avatar>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>Create New Property</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>{isEditMode ? 'Edit Property' : 'Create New Property'}</Typography>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -131,18 +171,36 @@ const PropertyEntry: React.FC = () => {
               <TextField name="address_line_1" label="Address" value={formData.address_line_1} onChange={handleChange} fullWidth />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField name="total_units" label="Total Units" type="number" value={formData.total_units} onChange={handleChange} fullWidth />
+              <TextField 
+                name="total_units" 
+                label="Total Units (Optional)" 
+                type="number" 
+                value={formData.total_units} 
+                onChange={handleChange} 
+                fullWidth 
+                disabled={isEditMode}
+                helperText={isEditMode ? "Auto-calculated when adding/removing units" : ""}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField name="total_area_sqft" label="Total Area (SqFt)" type="number" value={formData.total_area_sqft} onChange={handleChange} fullWidth />
+              <TextField 
+                name="total_area_sqft" 
+                label="Total Area (SqFt) (Optional)" 
+                type="number" 
+                value={formData.total_area_sqft} 
+                onChange={handleChange} 
+                fullWidth 
+                disabled={isEditMode}
+                helperText={isEditMode ? "Auto-calculated when adding/removing units" : ""}
+              />
             </Grid>
 
             <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-              <Button variant="outlined" onClick={() => navigate('/properties')} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
+              <Button variant="outlined" onClick={() => navigate(-1)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={saving} sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
-                {saving ? <CircularProgress size={24} sx={{ mr: 1, color: 'white' }} /> : 'Create Property'}
+                {saving ? <CircularProgress size={24} sx={{ mr: 1, color: 'white' }} /> : (isEditMode ? 'Update Property' : 'Create Property')}
               </Button>
             </Grid>
           </Grid>

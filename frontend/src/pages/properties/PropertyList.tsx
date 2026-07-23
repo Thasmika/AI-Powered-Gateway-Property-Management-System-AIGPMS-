@@ -6,6 +6,8 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DomainIcon from '@mui/icons-material/Domain';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,6 +44,25 @@ const PropertyList: React.FC = () => {
   }, [token]);
 
   useEffect(() => { fetchProperties(); }, [fetchProperties]);
+
+  const handleDelete = async (propertyId: string) => {
+    if (!window.confirm('Are you sure you want to delete this property?')) return;
+    
+    try {
+      const res = await fetch(`${API}/properties/${propertyId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to delete property');
+      }
+      // Successfully deleted, refresh list
+      fetchProperties();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,6 +130,16 @@ const PropertyList: React.FC = () => {
                         <Tooltip title="View Details">
                           <IconButton size="small" onClick={() => navigate(`/properties/${prop.property_id}`)} sx={{ color: '#6366f1' }}>
                             <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => navigate(`/properties/${prop.property_id}/edit`)} sx={{ color: 'text.secondary', '&:hover': { color: 'white' } }}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => handleDelete(prop.property_id)} sx={{ color: 'text.secondary', '&:hover': { color: '#ef4444' } }}>
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </TableCell>

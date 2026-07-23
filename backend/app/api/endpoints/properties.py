@@ -102,9 +102,52 @@ def update_property(
     )
     return db_obj
 
+@router.delete("/{property_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_property(
+    property_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Delete a property if it has no units"""
+    db_obj = db.query(Property).filter(Property.property_id == property_id).first()
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Property not found")
+        
+    unit_count = db.query(PropertyUnit).filter(PropertyUnit.property_id == property_id).count()
+    if unit_count > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail="This property has units therefore you can't delete this property. If you want delete this property, you have to delete units one by one. After that you can delete property name."
+        )
+        
+    db.delete(db_obj)
+    db.commit()
+    
+    create_audit_log(
+        db=db,
+        user_id=current_user.user_id,
+        action="Delete Property",
+        module="Property",
+        old_value=db_obj.property_code,
+        new_value=None
+    )
+    return None
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Property Units
 # ─────────────────────────────────────────────────────────────────────────────
+
+def recalculate_property_totals(db: Session, property_id: str):
+    from sqlalchemy import func
+    prop = db.query(Property).filter(Property.property_id == property_id).first()
+    if not prop: return
+    
+    total_units = db.query(func.count(PropertyUnit.unit_id)).filter(PropertyUnit.property_id == property_id).scalar() or 0
+    total_area = db.query(func.sum(PropertyUnit.area_sqft)).filter(PropertyUnit.property_id == property_id).scalar() or 0
+    
+    prop.total_units = total_units
+    prop.total_area_sqft = total_area
+    db.commit()
 
 @router.get("/{property_id}/units", response_model=List[PropertyUnitOut])
 def list_property_units(
@@ -140,6 +183,7 @@ def create_property_unit(
         old_value=None,
         new_value=f"Added unit {db_obj.unit_number} to {property_id}"
     )
+    recalculate_property_totals(db, property_id)
     return db_obj
 
 @router.put("/{property_id}/units/{unit_id}", response_model=PropertyUnitOut)
@@ -174,4 +218,36 @@ def update_property_unit(
         old_value=None,
         new_value=f"Updated unit {unit_id}"
     )
+    recalculate_property_totals(db, property_id)
     return db_obj
+
+@router.delete("/{property_id}/units/{unit_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_property_unit(
+    property_id: str,
+    unit_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Delete a property unit"""
+    db_obj = db.query(PropertyUnit).filter(
+        PropertyUnit.property_id == property_id,
+        PropertyUnit.unit_id == unit_id
+    ).first()
+    
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Property Unit not found")
+
+    db.delete(db_obj)
+    db.commit()
+    
+    recalculate_property_totals(db, property_id)
+    
+    create_audit_log(
+        db=db,
+        user_id=current_user.user_id,
+        action="Delete Property Unit",
+        module="Property",
+        old_value=unit_id,
+        new_value=None
+    )
+    return None
