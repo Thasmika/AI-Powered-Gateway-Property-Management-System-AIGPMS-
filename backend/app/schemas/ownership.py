@@ -82,7 +82,7 @@ class BeneficialOwnerResponse(BeneficialOwnerInDBBase):
 
 class BeneficiaryAllocationBase(BaseModel):
     beneficial_owner_id: Optional[str] = None
-    allocation_percentage: Decimal = Field(..., max_digits=5, decimal_places=2)
+    allocation_percentage: Decimal = Field(...)
     bank_account_name: Optional[str] = Field(None, max_length=200)
     bank_account_number: Optional[str] = Field(None, max_length=100)
     bank_name: Optional[str] = Field(None, max_length=200)
@@ -97,7 +97,7 @@ class BeneficiaryAllocationCreate(BeneficiaryAllocationBase):
 
 class BeneficiaryAllocationUpdate(BaseModel):
     beneficial_owner_id: Optional[str] = None
-    allocation_percentage: Optional[Decimal] = Field(None, max_digits=5, decimal_places=2)
+    allocation_percentage: Optional[Decimal] = Field(None)
     bank_account_name: Optional[str] = Field(None, max_length=200)
     bank_account_number: Optional[str] = Field(None, max_length=100)
     bank_name: Optional[str] = Field(None, max_length=200)
@@ -122,7 +122,7 @@ class OwnershipRecordBase(BaseModel):
     property_id: str
     legal_owner_id: Optional[str] = None
     ownership_type: str = Field(..., max_length=30)
-    ownership_percentage: Decimal = Field(..., max_digits=5, decimal_places=2)
+    ownership_percentage: Decimal = Field(...)
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None
     is_current: Optional[bool] = True
@@ -133,7 +133,7 @@ class OwnershipRecordCreate(OwnershipRecordBase):
 
 class OwnershipRecordUpdate(BaseModel):
     ownership_type: Optional[str] = Field(None, max_length=30)
-    ownership_percentage: Optional[Decimal] = Field(None, max_digits=5, decimal_places=2)
+    ownership_percentage: Optional[Decimal] = Field(None)
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None
     is_current: Optional[bool] = None
