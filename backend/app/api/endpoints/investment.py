@@ -43,7 +43,7 @@ def get_investment_dashboard(
     
     # property_id to title deed mapping
     all_title_deeds = db.query(TitleDeed).all()
-    td_to_prop = {td.title_deed_id: td.property_id for td in all_title_deeds}
+    td_to_prop = {td.title_deed_id: td.unit.property_id for td in all_title_deeds if td.unit}
     
     for acq in all_acquisitions:
         prop_id = td_to_prop.get(acq.title_deed_id)
@@ -80,7 +80,7 @@ def get_investment_dashboard(
     table_data = []
 
     for prop in properties:
-        td = prop.title_deed
+        td = prop.units[0].title_deed if prop.units else None
         acq_cost = td.acquisition_costs.total_acquisition_cost if td and td.acquisition_costs else Decimal("0")
         
         market_val = acq_cost

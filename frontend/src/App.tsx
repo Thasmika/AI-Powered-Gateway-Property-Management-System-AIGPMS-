@@ -22,13 +22,32 @@ import PropertyList from './pages/properties/PropertyList';
 import PropertyEntry from './pages/properties/PropertyEntry';
 import PropertyDetail from './pages/properties/PropertyDetail';
 import TitleDeedList from './pages/title-deeds/TitleDeedList';
+import TitleDeedEntry from './pages/title-deeds/TitleDeedEntry';
 import TitleDeedDetail from './pages/title-deeds/TitleDeedDetail';
 import PropertyValuationEntry from './pages/title-deeds/PropertyValuationEntry';
+import AcquisitionCostEntry from './pages/title-deeds/AcquisitionCostEntry';
 import InvestmentDashboard from './pages/dashboard/InvestmentDashboard';
 
 // Sprint 3 - Ownership & Beneficiaries
 import OwnershipList from './pages/ownership/OwnershipList';
 import OwnershipDetail from './pages/ownership/OwnershipDetail';
+
+// Sprint 4 - Tenants & Leases
+import TenantList from './pages/tenants/TenantList';
+import TenantEntry from './pages/tenants/TenantEntry';
+import TenantDetail from './pages/tenants/TenantDetail';
+import LeaseEntry from './pages/leases/LeaseEntry';
+import LeaseDetail from './pages/leases/LeaseDetail';
+
+import ReceiptList from './pages/pdc/ReceiptList';
+import ReceiptVoucherEntry from './pages/pdc/ReceiptVoucherEntry';
+import ReceiptDetail from './pages/pdc/ReceiptDetail';
+import PDCReceivedRegister from './pages/pdc/PDCReceivedRegister';
+import PDCReceivedDetail from './pages/pdc/PDCReceivedDetail';
+
+import PDCIssuedRegister from './pages/pdc/PDCIssuedRegister';
+import PDCIssuedDetail from './pages/pdc/PDCIssuedDetail';
+import ChequebookRegister from './pages/pdc/ChequebookRegister';
 
 // Generic placeholder page for role authorization testing
 const ModulePlaceholder: React.FC<{ name: string }> = ({ name }) => {
@@ -43,6 +62,7 @@ const ModulePlaceholder: React.FC<{ name: string }> = ({ name }) => {
     </Paper>
   );
 };
+
 
 const App: React.FC = () => {
   return (
@@ -109,7 +129,7 @@ const App: React.FC = () => {
                 path="title-deeds/new"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ModulePlaceholder name="Title Deed Entry" />
+                    <TitleDeedEntry />
                   </ProtectedRoute>
                 }
               />
@@ -126,6 +146,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
                     <PropertyValuationEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="title-deeds/:titleDeedId/acquisition-cost"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <AcquisitionCostEntry />
                   </ProtectedRoute>
                 }
               />
@@ -154,30 +182,104 @@ const App: React.FC = () => {
                 }
               />
 
+
               {/* ── Tenancy ──────────────────────────────────────────────── */}
               <Route
                 path="tenants-leases"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
-                    <ModulePlaceholder name="Tenants & Lease Management" />
+                    <TenantList />
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="rentals"
+                path="tenants-leases/tenants"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
-                    <ModulePlaceholder name="Rental Collection" />
+                    <TenantList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tenants-leases/tenants/new"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <TenantEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tenants-leases/tenants/:tenantId/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <TenantEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tenants-leases/tenants/:tenantId"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <TenantDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tenants-leases/leases/new"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LeaseEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tenants-leases/leases/:leaseId"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LeaseDetail />
+                  </ProtectedRoute>
+                }
+              />
+              {/* ── Tenancy & Rentals ────────────────────────────────────── */}
+              <Route
+                path="pdc/receipts"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <ReceiptList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="pdc/receipts/new"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <ReceiptVoucherEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="pdc/receipts/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <ReceiptDetail />
                   </ProtectedRoute>
                 }
               />
 
-              {/* ── PDC (Post-Dated Cheques) — PM Approved ───────────────── */}
+              {/* ── PDC (Post-Dated Cheques) ─────────────────────────────── */}
               <Route
-                path="pdc-received"
+                path="pdc/register"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ModulePlaceholder name="PDC Received Register" />
+                    <PDCReceivedRegister />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="pdc/register/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <PDCReceivedDetail />
                   </ProtectedRoute>
                 }
               />
@@ -185,7 +287,23 @@ const App: React.FC = () => {
                 path="pdc-issued"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ModulePlaceholder name="PDC Issued Register" />
+                    <PDCIssuedRegister />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="pdc-issued/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <PDCIssuedDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="cheque-books"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <ChequebookRegister />
                   </ProtectedRoute>
                 }
               />

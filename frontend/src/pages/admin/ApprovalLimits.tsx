@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Dialog, DialogTitle, DialogContent,
@@ -37,7 +37,7 @@ const ApprovalLimits: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchLimits = useCallback(async () => {
     setLoading(true); setError(null);
@@ -47,7 +47,7 @@ const ApprovalLimits: React.FC = () => {
       setLimits(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token]);
+  }, [authHeaders]);
 
   useEffect(() => { fetchLimits(); }, [fetchLimits]);
 

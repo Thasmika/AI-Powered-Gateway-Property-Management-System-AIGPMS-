@@ -15,7 +15,10 @@ class PropertyUnitBase(BaseModel):
     status: Optional[str] = "Vacant"
 
 class PropertyUnitCreate(PropertyUnitBase):
-    pass
+    legal_owner_id: Optional[str] = None
+    beneficial_owner_id: Optional[str] = None
+    bank_id: Optional[str] = None
+    tenant_id: Optional[str] = None
 
 class PropertyUnitUpdate(BaseModel):
     unit_number: Optional[str] = None
@@ -29,6 +32,7 @@ class PropertyUnitOut(PropertyUnitBase):
     unit_id: str
     property_id: str
     created_at: datetime
+    title_deed: Optional['TitleDeedOut'] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -126,8 +130,8 @@ class TitleDeedBase(BaseModel):
     municipality_property_number: Optional[str] = None
     plot_number: Optional[str] = None
     unit_number: Optional[str] = None
-    legal_owner: Optional[str] = None
-    beneficial_owner: Optional[str] = None
+    legal_owner_id: Optional[str] = None
+    beneficial_owner_id: Optional[str] = None
     financier: Optional[str] = None
     ownership_percentage: Optional[Decimal] = None
     purchase_method: Optional[str] = None
@@ -148,7 +152,7 @@ class TitleDeedUpdate(TitleDeedBase):
 class TitleDeedOut(TitleDeedBase):
     model_config = ConfigDict(from_attributes=True)
     title_deed_id: str
-    property_id: str
+    unit_id: str
     created_at: datetime
     updated_at: datetime
     
@@ -199,9 +203,8 @@ class PropertyOut(PropertyBase):
     updated_at: datetime
 
 class PropertyDetailOut(PropertyOut):
-    """Includes nested units, title deed, documents, etc. for full detail view."""
+    """Includes nested units, documents, etc. for full detail view."""
     units: List[PropertyUnitOut] = []
-    title_deed: Optional[TitleDeedOut] = None
     documents: List[PropertyDocumentOut] = []
     valuations: List[PropertyValuationOut] = []
 

@@ -18,7 +18,8 @@ from app.models.property import (  # noqa: F401
 
 # Ownership & Beneficiaries
 from app.models.ownership import (  # noqa: F401
-    Owner,
+    LegalOwner,
+    BeneficialOwner,
     OwnershipRecord,
     BeneficiaryAllocation,
 )

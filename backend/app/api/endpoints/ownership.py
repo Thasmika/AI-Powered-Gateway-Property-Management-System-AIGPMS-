@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 from app.database.session import get_db
-from app.models.ownership import Owner, OwnershipRecord, BeneficiaryAllocation
+from app.models.ownership import LegalOwner, BeneficialOwner, OwnershipRecord, BeneficiaryAllocation
 from app.schemas.ownership import (
-    OwnerCreate, OwnerUpdate, OwnerResponse,
+    LegalOwnerCreate, LegalOwnerUpdate, LegalOwnerResponse,
+    BeneficialOwnerCreate, BeneficialOwnerUpdate, BeneficialOwnerResponse,
     OwnershipRecordCreate, OwnershipRecordUpdate, OwnershipRecordResponse,
     BeneficiaryAllocationCreate, BeneficiaryAllocationUpdate, BeneficiaryAllocationResponse
 )
@@ -13,32 +14,67 @@ from app.api.deps import get_current_active_user
 
 router = APIRouter()
 
-# ----------------- OWNERS -----------------
+# ----------------- LEGAL OWNERS -----------------
 
-@router.get("/owners", response_model=List[OwnerResponse])
-def get_owners(db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
-    return db.query(Owner).all()
+@router.get("/legal-owners", response_model=List[LegalOwnerResponse])
+def get_legal_owners(db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    return db.query(LegalOwner).all()
 
-@router.post("/owners", response_model=OwnerResponse, status_code=status.HTTP_201_CREATED)
-def create_owner(owner_in: OwnerCreate, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
-    new_owner = Owner(**owner_in.model_dump())
+@router.post("/legal-owners", response_model=LegalOwnerResponse, status_code=status.HTTP_201_CREATED)
+def create_legal_owner(owner_in: LegalOwnerCreate, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    new_owner = LegalOwner(**owner_in.model_dump())
     db.add(new_owner)
     db.commit()
     db.refresh(new_owner)
     return new_owner
 
-@router.get("/owners/{owner_id}", response_model=OwnerResponse)
-def get_owner(owner_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
-    owner = db.query(Owner).filter(Owner.owner_id == owner_id).first()
+@router.get("/legal-owners/{legal_owner_id}", response_model=LegalOwnerResponse)
+def get_legal_owner(legal_owner_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    owner = db.query(LegalOwner).filter(LegalOwner.legal_owner_id == legal_owner_id).first()
     if not owner:
-        raise HTTPException(status_code=404, detail="Owner not found")
+        raise HTTPException(status_code=404, detail="Legal Owner not found")
     return owner
 
-@router.put("/owners/{owner_id}", response_model=OwnerResponse)
-def update_owner(owner_id: str, owner_in: OwnerUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
-    owner = db.query(Owner).filter(Owner.owner_id == owner_id).first()
+@router.put("/legal-owners/{legal_owner_id}", response_model=LegalOwnerResponse)
+def update_legal_owner(legal_owner_id: str, owner_in: LegalOwnerUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    owner = db.query(LegalOwner).filter(LegalOwner.legal_owner_id == legal_owner_id).first()
     if not owner:
-        raise HTTPException(status_code=404, detail="Owner not found")
+        raise HTTPException(status_code=404, detail="Legal Owner not found")
+    
+    update_data = owner_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(owner, field, value)
+        
+    db.commit()
+    db.refresh(owner)
+    return owner
+
+# ----------------- BENEFICIAL OWNERS -----------------
+
+@router.get("/beneficial-owners", response_model=List[BeneficialOwnerResponse])
+def get_beneficial_owners(db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    return db.query(BeneficialOwner).all()
+
+@router.post("/beneficial-owners", response_model=BeneficialOwnerResponse, status_code=status.HTTP_201_CREATED)
+def create_beneficial_owner(owner_in: BeneficialOwnerCreate, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    new_owner = BeneficialOwner(**owner_in.model_dump())
+    db.add(new_owner)
+    db.commit()
+    db.refresh(new_owner)
+    return new_owner
+
+@router.get("/beneficial-owners/{beneficial_owner_id}", response_model=BeneficialOwnerResponse)
+def get_beneficial_owner(beneficial_owner_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    owner = db.query(BeneficialOwner).filter(BeneficialOwner.beneficial_owner_id == beneficial_owner_id).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Beneficial Owner not found")
+    return owner
+
+@router.put("/beneficial-owners/{beneficial_owner_id}", response_model=BeneficialOwnerResponse)
+def update_beneficial_owner(beneficial_owner_id: str, owner_in: BeneficialOwnerUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    owner = db.query(BeneficialOwner).filter(BeneficialOwner.beneficial_owner_id == beneficial_owner_id).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Beneficial Owner not found")
     
     update_data = owner_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():

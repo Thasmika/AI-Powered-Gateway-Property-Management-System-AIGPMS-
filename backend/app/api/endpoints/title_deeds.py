@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from app.database.session import get_db
 from app.models.property import (
-    TitleDeed, PropertyAcquisitionCost, PropertyValuation, Property
+    TitleDeed, PropertyAcquisitionCost, PropertyValuation, Property, PropertyUnit
 )
 from app.models.auth import User
 from app.schemas.property import (
@@ -32,22 +32,22 @@ def list_title_deeds(
 
 @router.post("", response_model=TitleDeedOut, status_code=status.HTTP_201_CREATED)
 def create_title_deed(
-    property_id: str,
+    unit_id: str,
     payload: TitleDeedCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """Create a new title deed for a property"""
-    # Check if property exists
-    prop = db.query(Property).filter(Property.property_id == property_id).first()
-    if not prop:
-        raise HTTPException(status_code=404, detail="Property not found")
+    """Create a new title deed for a unit"""
+    # Check if unit exists
+    unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == unit_id).first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Property Unit not found")
         
-    # Check if title deed already exists for this property
-    if db.query(TitleDeed).filter(TitleDeed.property_id == property_id).first():
-        raise HTTPException(status_code=400, detail="Title deed already exists for this property")
+    # Check if title deed already exists for this unit
+    if db.query(TitleDeed).filter(TitleDeed.unit_id == unit_id).first():
+        raise HTTPException(status_code=400, detail="Title deed already exists for this unit")
         
-    db_obj = TitleDeed(**payload.model_dump(), property_id=property_id)
+    db_obj = TitleDeed(**payload.model_dump(), unit_id=unit_id)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -148,7 +148,7 @@ def add_valuation(
         
     db_obj = PropertyValuation(
         **payload.model_dump(),
-        property_id=td.property_id,
+        property_id=td.unit.property_id,
         appreciation_percentage=appreciation_percentage,
         created_by=current_user.user_id
     )

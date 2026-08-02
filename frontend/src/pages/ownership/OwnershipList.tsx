@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, CircularProgress, Avatar, Alert, IconButton, Tooltip, LinearProgress
@@ -17,11 +17,11 @@ interface Owner {
 interface OwnershipRecord {
   ownership_id: string;
   property_id: string;
-  owner_id: string;
+  legal_owner_id: string;
   ownership_type: string;
   ownership_percentage: number;
   is_current: boolean;
-  owner: Owner;
+  legal_owner?: Owner;
 }
 
 interface Property {
@@ -45,7 +45,7 @@ const OwnershipList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,7 +79,7 @@ const OwnershipList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [authHeaders]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -132,7 +132,7 @@ const OwnershipList: React.FC = () => {
                       {group.records.length > 0 ? (
                         group.records.map(r => (
                           <Typography key={r.ownership_id} variant="body2" color="text.secondary">
-                            {r.owner.full_name} ({Number(r.ownership_percentage)}%)
+                            {r.legal_owner?.full_name || 'Unknown Owner'} ({Number(r.ownership_percentage)}%)
                           </Typography>
                         ))
                       ) : (

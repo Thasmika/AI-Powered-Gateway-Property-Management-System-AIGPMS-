@@ -113,22 +113,22 @@
 > **Milestone:** Full tenant and lease lifecycle is working including version control, payment schedule entry, and Ejari reference tracking.
 
 ### Backend
-- [ ] Create `schemas/tenant.py` — Tenant, Lease, LeaseVersion, LeasePaymentSchedule, LeaseDocument
-- [ ] Create `api/endpoints/tenants.py` — CRUD: tenant master
-- [ ] Create `api/endpoints/leases.py` — CRUD: lease, lease version, payment schedule
-- [ ] Business rule: lease renewal auto-increments `version_number`, sets previous version `is_current_version = False`
-- [ ] Business rule: new lease version generates new `lease_payment_schedules` rows
-- [ ] Ejari number field in LeaseVersion (PM requirement)
-- [ ] Endpoint: `POST /api/v1/leases/{id}/renew` — creates new version, preserves history
-- [ ] Register tenant and lease routers in `main.py`
+- [x] Create `schemas/tenant.py` — Tenant, Lease, LeaseVersion, LeasePaymentSchedule, LeaseDocument
+- [x] Create `api/endpoints/tenants.py` — CRUD: tenant master
+- [x] Create `api/endpoints/leases.py` — CRUD: lease, lease version, payment schedule
+- [x] Business rule: lease renewal auto-increments `version_number`, sets previous version `is_current_version = False`
+- [x] Business rule: new lease version generates new `lease_payment_schedules` rows
+- [x] Ejari number field in LeaseVersion (PM requirement)
+- [x] Endpoint: `POST /api/v1/leases/{id}/renew` — creates new version, preserves history
+- [x] Register tenant and lease routers in `main.py`
 
 ### Frontend
-- [ ] Create `pages/TenantList.tsx` — tenant master with search, filter by status
-- [ ] Create `pages/TenantEntry.tsx` — create/edit tenant form
-- [ ] Create `pages/TenantDetail.tsx` — tenant profile, lease history, PDC history
-- [ ] Create `pages/LeaseEntry.tsx` — new lease / renewal form with version control
-- [ ] Create `pages/LeaseDetail.tsx` — active lease with version history tab
-- [ ] Create `pages/LeasePaymentSchedule.tsx` — view/enter approved payment schedule (used as PDC validation baseline)
+- [x] Create `pages/TenantList.tsx` — tenant master with search, filter by status
+- [x] Create `pages/TenantEntry.tsx` — create/edit tenant form
+- [x] Create `pages/TenantDetail.tsx` — tenant profile, lease history, PDC history
+- [x] Create `pages/LeaseEntry.tsx` — new lease / renewal form with version control
+- [x] Create `pages/LeaseDetail.tsx` — active lease with version history tab
+- [x] Create `pages/LeasePaymentSchedule.tsx` — view/enter approved payment schedule (used as PDC validation baseline)
 
 ---
 
@@ -137,61 +137,61 @@
 > **Milestone:** Accountant can create a receipt with multiple PDCs, post it, and each cheque becomes an independent PDC record with alerts scheduled.
 
 ### Backend
-- [ ] Create `schemas/pdc.py` — RentalReceipt, RentalReceiptPaymentLine, PDCReceived, PDCReceivedStatusHistory, ChequeReturn, ChequeReplacement
+- [x] Create `schemas/pdc.py` — RentalReceipt, RentalReceiptPaymentLine, PDCReceived, PDCReceivedStatusHistory, ChequeReturn, ChequeReplacement
 
 #### Receipt API (`api/endpoints/receipts.py`)
-- [ ] `POST /api/v1/rental-receipts` — create receipt with payment lines
-- [ ] `GET /api/v1/rental-receipts` — list with filters
-- [ ] `GET /api/v1/rental-receipts/{id}` — detail
-- [ ] `POST /api/v1/rental-receipts/{id}/post` — post receipt
-- [ ] `POST /api/v1/rental-receipts/{id}/reverse` — reverse (MD only)
+- [x] `POST /api/v1/rental-receipts` — create receipt with payment lines
+- [x] `GET /api/v1/rental-receipts` — list with filters
+- [x] `GET /api/v1/rental-receipts/{id}` — detail
+- [x] `POST /api/v1/rental-receipts/{id}/post` — post receipt
+- [x] `POST /api/v1/rental-receipts/{id}/reverse` — reverse (MD only)
 
 #### Receipt Validation Rules (all must be enforced in API)
-- [ ] Receipt Total = sum of all payment line amounts
-- [ ] Each cheque amount > 0
-- [ ] Each cheque must have: `cheque_number`, `bank_name`, `instrument_date`
-- [ ] No duplicate cheque numbers in same receipt
-- [ ] Total cheques must agree with lease payment schedule (or authorized variance)
-- [ ] Receipt currency must match lease currency
-- [ ] Cannot POST receipt if any mandatory field is missing
-- [ ] Once Posted: receipt is locked — edits require Reversal or Cancellation with authorization
+- [x] Receipt Total = sum of all payment line amounts
+- [x] Each cheque amount > 0
+- [x] Each cheque must have: `cheque_number`, `bank_name`, `instrument_date`
+- [x] No duplicate cheque numbers in same receipt
+- [x] Total cheques must agree with lease payment schedule (or authorized variance)
+- [x] Receipt currency must match lease currency
+- [x] Cannot POST receipt if any mandatory field is missing
+- [x] Once Posted: receipt is locked — edits require Reversal or Cancellation with authorization
 
 #### Post-Receipt Actions
-- [ ] On POST: auto-create individual `pdc_received` record for each cheque line
-- [ ] On create `pdc_received`: auto-create initial status history entry (`Received`)
-- [ ] Schedule alert jobs for each cheque date (30/14/7/3 days before, on date, after date)
+- [x] On POST: auto-create individual `pdc_received` record for each cheque line
+- [x] On create `pdc_received`: auto-create initial status history entry (`Received`)
+- [x] Schedule alert jobs for each cheque date (30/14/7/3 days before, on date, after date)
 
 #### PDC Received API (`api/endpoints/pdc_received.py`)
-- [ ] `GET /api/v1/pdc-received` — register with filters
-- [ ] `GET /api/v1/pdc-received/{id}` — detail
-- [ ] `POST /api/v1/pdc-received/{id}/deposit` — deposit cheque
-- [ ] `POST /api/v1/pdc-received/{id}/clear` — mark cleared
-- [ ] `POST /api/v1/pdc-received/{id}/return` — record return (with charges)
-- [ ] `POST /api/v1/pdc-received/{id}/replace` — link replacement cheque
+- [x] `GET /api/v1/pdc-received` — register with filters
+- [x] `GET /api/v1/pdc-received/{id}` — detail
+- [x] `POST /api/v1/pdc-received/{id}/deposit` — deposit cheque
+- [x] `POST /api/v1/pdc-received/{id}/clear` — mark cleared
+- [x] `POST /api/v1/pdc-received/{id}/return` — record return (with charges)
+- [x] `POST /api/v1/pdc-received/{id}/replace` — link replacement cheque
 
 ### Frontend — Receipt Entry
-- [ ] Create `pages/ReceiptVoucherEntry.tsx`
-  - [ ] Panel A — Receipt Header: Receipt No. (auto), Date, Tenant (dropdown), Property, Unit, Lease Ref, Contract Version, Payment Purpose, Currency, Total (auto-sum), Received By, Remarks
-  - [ ] Panel B — Payment Detail Grid (inline editable):
-    - [ ] Columns: Line #, Instrument Type, Cheque No., Bank Name, Account Holder, Cheque Date, Amount, Period From/To, Receivable Link, PDC Status, Image Upload, Remarks
-    - [ ] Grid buttons: Add Row, Edit Row, Delete Draft Row
-    - [ ] Auto-generate cheque dates from lease payment schedule
-    - [ ] Auto-distribute equal amounts when applicable
-    - [ ] Live total calculation — header total = sum of grid rows
-    - [ ] Validation warnings shown inline before posting
-    - [ ] Print receipt button — PDF with all cheque details + QR code placeholder + tenant signature block
-- [ ] Create `pages/ReceiptList.tsx` — list with status filter
-- [ ] Create `pages/ReceiptDetail.tsx` — read-only posted receipt with print button
+- [x] Create `pages/ReceiptVoucherEntry.tsx`
+  - [x] Panel A — Receipt Header: Receipt No. (auto), Date, Tenant (dropdown), Property, Unit, Lease Ref, Contract Version, Payment Purpose, Currency, Total (auto-sum), Received By, Remarks
+  - [x] Panel B — Payment Detail Grid (inline editable):
+    - [x] Columns: Line #, Instrument Type, Cheque No., Bank Name, Account Holder, Cheque Date, Amount, Period From/To, Receivable Link, PDC Status, Image Upload, Remarks
+    - [x] Grid buttons: Add Row, Edit Row, Delete Draft Row
+    - [x] Auto-generate cheque dates from lease payment schedule
+    - [x] Auto-distribute equal amounts when applicable
+    - [x] Live total calculation — header total = sum of grid rows
+    - [x] Validation warnings shown inline before posting
+    - [x] Print receipt button — PDF with all cheque details + QR code placeholder + tenant signature block
+- [x] Create `pages/ReceiptList.tsx` — list with status filter
+- [x] Create `pages/ReceiptDetail.tsx` — read-only posted receipt with print button
 
 ### Frontend — PDC Received Register
-- [ ] Create `pages/PDCReceivedRegister.tsx`
-  - [ ] Searchable/filterable register: Property, Tenant, Cheque No., Bank, Cheque Date, Amount, Status
-  - [ ] Filter by status: Received / Held / Due Soon / Submitted / Cleared / Returned / Replaced
-  - [ ] Status-change action buttons per row (Deposit, Clear, Return, Replace, Cancel)
-  - [ ] Status change requires reason (mandatory for Replace / Cancel)
-  - [ ] Cheque replacement form: links new cheque to returned cheque, preserves history
-  - [ ] Cheque return form: return date, reason, bank charges, follow-up action
-- [ ] Create `pages/PDCReceivedDetail.tsx` — single cheque detail with status history timeline
+- [x] Create `pages/PDCReceivedRegister.tsx`
+  - [x] Searchable/filterable register: Property, Tenant, Cheque No., Bank, Cheque Date, Amount, Status
+  - [x] Filter by status: Received / Held / Due Soon / Submitted / Cleared / Returned / Replaced
+  - [x] Status-change action buttons per row (Deposit, Clear, Return, Replace, Cancel)
+  - [x] Status change requires reason (mandatory for Replace / Cancel)
+  - [x] Cheque replacement form: links new cheque to returned cheque, preserves history
+  - [x] Cheque return form: return date, reason, bank charges, follow-up action
+- [x] Create `pages/PDCReceivedDetail.tsx` — single cheque detail with status history timeline
 
 ---
 
@@ -200,46 +200,46 @@
 > **Milestone:** Issued cheques are tracked with full lifecycle, cheque books are registered, approval workflow is working, and the AI Smart Alert Engine is running on schedule.
 
 ### Backend — PDC Issued
-- [ ] Create `schemas/pdc_issued.py` — ChequeBook, ChequeLeaf, PDCIssued, PDCIssuedStatusHistory, AuthorizedSignatory
-- [ ] Create `api/endpoints/pdc_issued.py`
-  - [ ] `GET/POST /api/v1/pdc-issued` — register and create
-  - [ ] `POST /api/v1/pdc-issued/{id}/approve` — MD approval
-  - [ ] `POST /api/v1/pdc-issued/{id}/issue` — mark as issued
-  - [ ] `POST /api/v1/pdc-issued/{id}/clear` — mark cleared
-  - [ ] `POST /api/v1/pdc-issued/{id}/return` — record return
-  - [ ] `GET/POST /api/v1/cheque-books` — register cheque books
-  - [ ] `GET /api/v1/cheque-books/{id}/leaves` — view leaves by status
+- [x] Create `schemas/pdc_issued.py` — ChequeBook, ChequeLeaf, PDCIssued, PDCIssuedStatusHistory, AuthorizedSignatory
+- [x] Create `api/endpoints/pdc_issued.py`
+  - [x] `GET/POST /api/v1/pdc-issued` — register and create
+  - [x] `POST /api/v1/pdc-issued/{id}/approve` — MD approval
+  - [x] `POST /api/v1/pdc-issued/{id}/issue` — mark as issued
+  - [x] `POST /api/v1/pdc-issued/{id}/clear` — mark cleared
+  - [x] `POST /api/v1/pdc-issued/{id}/return` — record return
+  - [x] `GET/POST /api/v1/cheque-books` — register cheque books
+  - [x] `GET /api/v1/cheque-books/{id}/leaves` — view leaves by status
 
 #### PDC Issued Validation Rules
-- [ ] Block duplicate issued cheque numbers across all bank accounts
-- [ ] Cheque must belong to correct company bank account
-- [ ] Must link to at least one of: payment voucher, loan instalment, invoice, LPO
-- [ ] Block issue against unapproved expense (unless authorized override)
-- [ ] Cheque leaf status must be `Available` before issuing
-- [ ] On issue: update cheque leaf status to `Issued`
+- [x] Block duplicate issued cheque numbers across all bank accounts
+- [x] Cheque must belong to correct company bank account
+- [x] Must link to at least one of: payment voucher, loan instalment, invoice, LPO
+- [x] Block issue against unapproved expense (unless authorized override)
+- [x] Cheque leaf status must be `Available` before issuing
+- [x] On issue: update cheque leaf status to `Issued`
 
 ### Backend — AI Smart Alert Engine
-- [ ] Create `services/alert_engine.py` using APScheduler
-- [ ] Daily job: scan `pdc_received` for cheques where `cheque_date` is within alert thresholds
-- [ ] Daily job: scan `pdc_issued` for cheques due within alert thresholds
-- [ ] Alert thresholds read from `system_settings` table — NOT hardcoded
-- [ ] Default alert days: 30, 14, 7, 3, 0 (on date), overdue
-- [ ] Alert conditions — PDC Received: 30/14/7/3 days, on date, overdue, not cleared after 5 days, returned/replaced
-- [ ] Alert conditions — PDC Issued: 30/14/7/3 days, on date, uncleared, disputed
-- [ ] Phase 1: in-app dashboard notification only
-- [ ] Record every alert in `alert_logs` table (type, recipient, channel, timestamp)
-- [ ] `GET /api/v1/alerts/active` — active alerts for dashboard
-- [ ] `PUT /api/v1/alerts/{id}/dismiss` — dismiss alert
+- [x] Create `services/alert_engine.py` using APScheduler
+- [x] Daily job: scan `pdc_received` for cheques where `cheque_date` is within alert thresholds
+- [x] Daily job: scan `pdc_issued` for cheques due within alert thresholds
+- [x] Alert thresholds read from `system_settings` table — NOT hardcoded
+- [x] Default alert days: 30, 14, 7, 3, 0 (on date), overdue
+- [x] Alert conditions — PDC Received: 30/14/7/3 days, on date, overdue, not cleared after 5 days, returned/replaced
+- [x] Alert conditions — PDC Issued: 30/14/7/3 days, on date, uncleared, disputed
+- [ ] Phase 1: in-app dashboard notification only (UI remaining)
+- [x] Record every alert in `alert_logs` table (type, recipient, channel, timestamp)
+- [x] `GET /api/v1/alerts/active` — active alerts for dashboard
+- [x] `PUT /api/v1/alerts/{id}/dismiss` — dismiss alert
 
 ### Frontend — PDC Issued
-- [ ] Create `pages/PDCIssuedRegister.tsx`
-  - [ ] Issuance form: Payee, Type, Property Link, Cheque No. (from cheque book), Bank Account, Date, Amount, Purpose, Approval workflow
-  - [ ] Cheque book available leaves picker
-  - [ ] Filter by: Payee Type, Status, Date range
-  - [ ] Approval workflow UI: Accountant prepares → MD approves
-  - [ ] Handover tracking: date issued, acknowledged by
-- [ ] Create `pages/PDCIssuedDetail.tsx` — single issued cheque with status history
-- [ ] Create `pages/ChequebookRegister.tsx` — manage cheque books, view leaf status grid
+- [x] Create `pages/PDCIssuedRegister.tsx`
+  - [x] Issuance form: Payee, Type, Property Link, Cheque No. (from cheque book), Bank Account, Date, Amount, Purpose, Approval workflow
+  - [x] Cheque book available leaves picker
+  - [x] Filter by: Payee Type, Status, Date range
+  - [x] Approval workflow UI: Accountant prepares → MD approves
+  - [x] Handover tracking: date issued, acknowledged by
+- [x] Create `pages/PDCIssuedDetail.tsx` — single issued cheque with status history
+- [x] Create `pages/ChequebookRegister.tsx` — manage cheque books, view leaf status grid
 
 ---
 

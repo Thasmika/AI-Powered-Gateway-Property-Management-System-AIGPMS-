@@ -189,3 +189,35 @@ class SystemSetting(Base):
     is_editable         = Column(Boolean, default=True)
     updated_by          = Column(String(36), ForeignKey("users.user_id"), nullable=True)
     updated_at          = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AlertLog(Base):
+    """
+    AI Smart Alert Engine — persists every alert fired for the dashboard.
+    Supports in-app bell notifications. Phase 1: in-app only.
+
+    alert_type examples:
+      PDC_RECEIVED_DUE_30 | PDC_RECEIVED_DUE_14 | PDC_RECEIVED_DUE_7
+      PDC_RECEIVED_DUE_3  | PDC_RECEIVED_DUE_TODAY | PDC_RECEIVED_OVERDUE
+      PDC_RECEIVED_RETURNED | PDC_RECEIVED_NOT_CLEARED
+      PDC_ISSUED_DUE_30  | PDC_ISSUED_DUE_14 | PDC_ISSUED_DUE_7
+      PDC_ISSUED_DUE_3   | PDC_ISSUED_DUE_TODAY | PDC_ISSUED_OVERDUE
+    """
+    __tablename__ = "alert_logs"
+
+    alert_id            = Column(String(36), primary_key=True, default=generate_uuid)
+    alert_type          = Column(String(80), nullable=False, index=True)
+    # Severity: Info | Warning | Critical
+    severity            = Column(String(20), nullable=False, default="Info")
+    entity_type         = Column(String(50), nullable=True)   # pdc_received | pdc_issued
+    entity_id           = Column(String(36), nullable=True)   # FK value (not enforced — flexible)
+    title               = Column(String(200), nullable=False)
+    message             = Column(Text, nullable=True)
+
+    # Dismiss tracking
+    is_dismissed        = Column(Boolean, default=False)
+    dismissed_by        = Column(String(36), ForeignKey("users.user_id"), nullable=True)
+    dismissed_at        = Column(DateTime, nullable=True)
+
+    created_at          = Column(DateTime, default=datetime.utcnow, index=True)
+

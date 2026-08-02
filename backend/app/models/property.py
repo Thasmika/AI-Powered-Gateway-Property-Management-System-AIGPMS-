@@ -46,7 +46,6 @@ class Property(Base):
     updated_at        = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    title_deed        = relationship("TitleDeed", back_populates="property", uselist=False)
     units             = relationship("PropertyUnit", back_populates="property")
     valuations        = relationship("PropertyValuation", back_populates="property", order_by="PropertyValuation.valuation_date.desc()")
     documents         = relationship("PropertyDocument", back_populates="property")
@@ -69,6 +68,8 @@ class PropertyUnit(Base):
 
     property       = relationship("Property", back_populates="units")
     leases         = relationship("Lease", back_populates="unit")
+    title_deed     = relationship("TitleDeed", back_populates="unit", uselist=False)
+    ownership_records = relationship("OwnershipRecord", back_populates="unit")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ class TitleDeed(Base):
     __tablename__ = "title_deeds"
 
     title_deed_id               = Column(String(36), primary_key=True, default=generate_uuid)
-    property_id                 = Column(String(36), ForeignKey("properties.property_id"), nullable=False, unique=True)
+    unit_id                     = Column(String(36), ForeignKey("property_units.unit_id"), nullable=False, unique=True)
 
     # Legal Identifiers
     title_deed_number           = Column(String(100), nullable=True, index=True)
@@ -93,8 +94,8 @@ class TitleDeed(Base):
     unit_number                 = Column(String(50), nullable=True)
 
     # Ownership
-    legal_owner                 = Column(String(200), nullable=True)
-    beneficial_owner            = Column(String(200), nullable=True)
+    legal_owner_id              = Column(String(36), ForeignKey("legal_owners.legal_owner_id"), nullable=True)
+    beneficial_owner_id         = Column(String(36), ForeignKey("beneficial_owners.beneficial_owner_id"), nullable=True)
     financier                   = Column(String(200), nullable=True)
     ownership_percentage        = Column(Numeric(5, 2), nullable=True)  # e.g. 100.00
     purchase_method             = Column(String(50), nullable=True)     # Cash, Mortgage, Transfer
@@ -112,8 +113,10 @@ class TitleDeed(Base):
     updated_at                  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    property                    = relationship("Property", back_populates="title_deed")
+    unit                        = relationship("PropertyUnit", back_populates="title_deed")
     acquisition_costs           = relationship("PropertyAcquisitionCost", back_populates="title_deed", uselist=False)
+    legal_owner_rel             = relationship("LegalOwner", back_populates="title_deeds")
+    beneficial_owner_rel        = relationship("BeneficialOwner", back_populates="title_deeds")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

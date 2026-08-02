@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Dialog, DialogTitle, DialogContent,
@@ -34,7 +34,7 @@ const ExpenseCategoryMaster: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchCategories = useCallback(async () => {
     setLoading(true); setError(null);
@@ -46,7 +46,7 @@ const ExpenseCategoryMaster: React.FC = () => {
       setCategories(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, classFilter]);
+  }, [authHeaders, classFilter]);
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 

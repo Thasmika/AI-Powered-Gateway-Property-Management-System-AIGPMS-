@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.database.session import get_db
-from app.models.property import Property, PropertyUnit
+from app.models.property import Property, PropertyUnit, TitleDeed
+from app.models.ownership import OwnershipRecord, BeneficiaryAllocation
+from app.models.tenant import Lease
+from app.models.master_data import MasterBank
 from app.models.auth import User
 from app.schemas.property import (
     PropertyCreate, PropertyUpdate, PropertyOut, PropertyDetailOut,
@@ -170,10 +173,78 @@ def create_property_unit(
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
         
-    db_obj = PropertyUnit(**payload.model_dump(), property_id=property_id)
+    payload_dict = payload.model_dump()
+    legal_owner_id = payload_dict.pop("legal_owner_id", None)
+    beneficial_owner_id = payload_dict.pop("beneficial_owner_id", None)
+    bank_id = payload_dict.pop("bank_id", None)
+    tenant_id = payload_dict.pop("tenant_id", None)
+        
+    db_obj = PropertyUnit(**payload_dict, property_id=property_id)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
+    
+    # Cascading Logic
+    if legal_owner_id:
+        title_deed = TitleDeed(
+            unit_id=db_obj.unit_id,
+            legal_owner_id=legal_owner_id,
+            beneficial_owner_id=beneficial_owner_id,
+            ownership_percentage=100.0,
+            ownership_status="Active"
+        )
+        db.add(title_deed)
+        
+        ownership_record = OwnershipRecord(
+            property_id=property_id,
+            unit_id=db_obj.unit_id,
+            legal_owner_id=legal_owner_id,
+            ownership_type="Freehold",
+            ownership_percentage=100.0,
+            is_current=True
+        )
+        db.add(ownership_record)
+        db.flush()
+        
+        if beneficial_owner_id and bank_id:
+            bank = db.query(MasterBank).filter(MasterBank.bank_id == bank_id).first()
+            if bank:
+                allocation = BeneficiaryAllocation(
+                    ownership_record_id=ownership_record.ownership_id,
+                    beneficial_owner_id=beneficial_owner_id,
+                    allocation_percentage=100.0,
+                    bank_name=bank.bank_name,
+                    is_current=True
+                )
+                db.add(allocation)
+                
+    if tenant_id:
+        import uuid
+        lease_number = f"DRAFT-{uuid.uuid4().hex[:8].upper()}"
+        lease = Lease(
+            lease_number=lease_number,
+            property_id=property_id,
+            unit_id=db_obj.unit_id,
+            tenant_id=tenant_id,
+            status="Draft"
+        )
+        db.add(lease)
+        db.flush()
+        
+        from datetime import date
+        from app.models.tenant import LeaseVersion
+        lease_version = LeaseVersion(
+            lease_id=lease.lease_id,
+            version_number=1,
+            contract_start_date=date.today(),
+            contract_end_date=date.today(),
+            annual_rent=0,
+            security_deposit=0,
+            status="Draft"
+        )
+        db.add(lease_version)
+        
+    db.commit()
     
     create_audit_log(
         db=db,
@@ -181,7 +252,7 @@ def create_property_unit(
         action="Create Property Unit",
         module="Property",
         old_value=None,
-        new_value=f"Added unit {db_obj.unit_number} to {property_id}"
+        new_value=f"Added unit {db_obj.unit_number} to {property_id} with cascading details"
     )
     recalculate_property_totals(db, property_id)
     return db_obj

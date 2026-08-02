@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
@@ -41,7 +41,7 @@ const NotificationTemplates: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true); setError(null);
@@ -51,7 +51,7 @@ const NotificationTemplates: React.FC = () => {
       setTemplates(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token]);
+  }, [authHeaders]);
 
   useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
 

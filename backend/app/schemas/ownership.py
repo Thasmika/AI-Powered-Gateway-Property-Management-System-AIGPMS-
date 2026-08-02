@@ -3,7 +3,7 @@ from typing import Optional, List
 from decimal import Decimal
 from datetime import datetime, date
 
-class OwnerBase(BaseModel):
+class LegalOwnerBase(BaseModel):
     owner_type: str = Field(..., max_length=30)
     full_name: str = Field(..., max_length=200)
     trade_name: Optional[str] = Field(None, max_length=200)
@@ -15,10 +15,10 @@ class OwnerBase(BaseModel):
     address: Optional[str] = None
     status: Optional[str] = "Active"
 
-class OwnerCreate(OwnerBase):
+class LegalOwnerCreate(LegalOwnerBase):
     pass
 
-class OwnerUpdate(BaseModel):
+class LegalOwnerUpdate(BaseModel):
     owner_type: Optional[str] = Field(None, max_length=30)
     full_name: Optional[str] = Field(None, max_length=200)
     trade_name: Optional[str] = Field(None, max_length=200)
@@ -30,19 +30,58 @@ class OwnerUpdate(BaseModel):
     address: Optional[str] = None
     status: Optional[str] = None
 
-class OwnerInDBBase(OwnerBase):
-    owner_id: str
+class LegalOwnerInDBBase(LegalOwnerBase):
+    legal_owner_id: str
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
 
-class OwnerResponse(OwnerInDBBase):
+class LegalOwnerResponse(LegalOwnerInDBBase):
+    pass
+
+
+class BeneficialOwnerBase(BaseModel):
+    owner_type: str = Field(..., max_length=30)
+    full_name: str = Field(..., max_length=200)
+    trade_name: Optional[str] = Field(None, max_length=200)
+    id_number: Optional[str] = Field(None, max_length=100)
+    id_type: Optional[str] = Field(None, max_length=50)
+    nationality: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    address: Optional[str] = None
+    status: Optional[str] = "Active"
+
+class BeneficialOwnerCreate(BeneficialOwnerBase):
+    pass
+
+class BeneficialOwnerUpdate(BaseModel):
+    owner_type: Optional[str] = Field(None, max_length=30)
+    full_name: Optional[str] = Field(None, max_length=200)
+    trade_name: Optional[str] = Field(None, max_length=200)
+    id_number: Optional[str] = Field(None, max_length=100)
+    id_type: Optional[str] = Field(None, max_length=50)
+    nationality: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    address: Optional[str] = None
+    status: Optional[str] = None
+
+class BeneficialOwnerInDBBase(BeneficialOwnerBase):
+    beneficial_owner_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class BeneficialOwnerResponse(BeneficialOwnerInDBBase):
     pass
 
 class BeneficiaryAllocationBase(BaseModel):
-    beneficiary_id: str
+    beneficial_owner_id: Optional[str] = None
     allocation_percentage: Decimal = Field(..., max_digits=5, decimal_places=2)
     bank_account_name: Optional[str] = Field(None, max_length=200)
     bank_account_number: Optional[str] = Field(None, max_length=100)
@@ -57,7 +96,7 @@ class BeneficiaryAllocationCreate(BeneficiaryAllocationBase):
     pass
 
 class BeneficiaryAllocationUpdate(BaseModel):
-    beneficiary_id: Optional[str] = None
+    beneficial_owner_id: Optional[str] = None
     allocation_percentage: Optional[Decimal] = Field(None, max_digits=5, decimal_places=2)
     bank_account_name: Optional[str] = Field(None, max_length=200)
     bank_account_number: Optional[str] = Field(None, max_length=100)
@@ -77,11 +116,11 @@ class BeneficiaryAllocationInDBBase(BeneficiaryAllocationBase):
         from_attributes = True
 
 class BeneficiaryAllocationResponse(BeneficiaryAllocationInDBBase):
-    beneficiary: OwnerResponse
+    beneficial_owner: Optional[BeneficialOwnerResponse] = None
 
 class OwnershipRecordBase(BaseModel):
     property_id: str
-    owner_id: str
+    legal_owner_id: Optional[str] = None
     ownership_type: str = Field(..., max_length=30)
     ownership_percentage: Decimal = Field(..., max_digits=5, decimal_places=2)
     effective_from: Optional[date] = None
@@ -108,5 +147,5 @@ class OwnershipRecordInDBBase(OwnershipRecordBase):
         from_attributes = True
 
 class OwnershipRecordResponse(OwnershipRecordInDBBase):
-    owner: OwnerResponse
+    legal_owner: Optional[LegalOwnerResponse] = None
     beneficiary_allocations: List[BeneficiaryAllocationResponse] = []

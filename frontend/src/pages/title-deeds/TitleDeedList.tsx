@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Chip, CircularProgress, Avatar, Alert, IconButton, Tooltip
@@ -27,7 +27,7 @@ const TitleDeedList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchTitleDeeds = useCallback(async () => {
     setLoading(true);
@@ -38,7 +38,7 @@ const TitleDeedList: React.FC = () => {
       setTitleDeeds(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token]);
+  }, [authHeaders]);
 
   useEffect(() => { fetchTitleDeeds(); }, [fetchTitleDeeds]);
 

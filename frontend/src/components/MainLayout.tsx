@@ -34,6 +34,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AssignmentIcon from '@mui/icons-material/Assignment';        // Title Deed
 import MoneyOffIcon from '@mui/icons-material/MoneyOff';            // PDC Received
 import PaymentIcon from '@mui/icons-material/Payment';              // PDC Issued
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';    // Cheque Books
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';    // Expenses
 import SettingsIcon from '@mui/icons-material/Settings';              // Admin
 
@@ -75,10 +76,11 @@ const MainLayout: React.FC = () => {
       { text: 'Ownership',              icon: <GavelIcon />,                path: '/ownership',     roles: ['Managing Director', 'Accountant', 'Administrator'] },
       // ── Tenancy ──────────────────────────────────────────────────────────
       { text: 'Tenants & Leases',       icon: <PeopleIcon />,               path: '/tenants-leases', roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
-      { text: 'Rental Collection',      icon: <ReceiptIcon />,              path: '/rentals',       roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Rental Collection',      icon: <ReceiptIcon />,              path: '/pdc/receipts',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
       // ── PDC ──────────────────────────────────────────────────────────────
-      { text: 'PDC Received',           icon: <MoneyOffIcon />,             path: '/pdc-received',  roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'PDC Received',           icon: <MoneyOffIcon />,             path: '/pdc/register',  roles: ['Managing Director', 'Accountant', 'Administrator'] },
       { text: 'PDC Issued',             icon: <PaymentIcon />,              path: '/pdc-issued',    roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Cheque Books',           icon: <LibraryBooksIcon />,         path: '/cheque-books',  roles: ['Managing Director', 'Accountant', 'Administrator'] },
       // ── Finance ──────────────────────────────────────────────────────────
       { text: 'Expenses',               icon: <RequestQuoteIcon />,         path: '/expenses',      roles: ['Managing Director', 'Accountant', 'Administrator'] },
       { text: 'Finance & Vouchers',     icon: <AccountBalanceWalletIcon />, path: '/finance',       roles: ['Managing Director', 'Accountant', 'Administrator'] },
@@ -208,7 +210,7 @@ const MainLayout: React.FC = () => {
         <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', pb: 2 }}>
           <List className="px-2 flex flex-col gap-1 mt-2">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
               return (
                 <ListItemButton
                   key={item.text}

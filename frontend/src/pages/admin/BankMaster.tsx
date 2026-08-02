@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Dialog, DialogTitle, DialogContent,
@@ -34,7 +34,7 @@ const BankMaster: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchBanks = useCallback(async () => {
     setLoading(true);
@@ -45,7 +45,7 @@ const BankMaster: React.FC = () => {
       setBanks(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, showAll]);
+  }, [authHeaders, showAll]);
 
   useEffect(() => { fetchBanks(); }, [fetchBanks]);
 

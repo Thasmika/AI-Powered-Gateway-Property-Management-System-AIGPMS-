@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Grid, Divider, Button, Avatar, CircularProgress, Alert, Chip, Table, TableHead, TableRow, TableCell, TableBody,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, IconButton
@@ -42,16 +42,25 @@ const PropertyDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [legalOwners, setLegalOwners] = useState<any[]>([]);
+  const [beneficialOwners, setBeneficialOwners] = useState<any[]>([]);
+  const [banks, setBanks] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
+
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [unitData, setUnitData] = useState({
     unit_number: '',
     unit_type: 'Apartment',
     area_sqft: '',
-    status: 'Vacant'
+    status: 'Vacant',
+    legal_owner_id: '',
+    beneficial_owner_id: '',
+    bank_id: '',
+    tenant_id: ''
   });
   const [unitSaving, setUnitSaving] = useState(false);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchProperty = useCallback(async () => {
     setLoading(true);
@@ -62,9 +71,30 @@ const PropertyDetail: React.FC = () => {
       setProperty(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [propertyId, token]);
+  }, [propertyId, authHeaders]);
 
   useEffect(() => { fetchProperty(); }, [fetchProperty]);
+
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      try {
+        const [legalRes, benRes, bankRes, tenantRes] = await Promise.all([
+          fetch(`${API}/ownership/legal-owners`, { headers: authHeaders }),
+          fetch(`${API}/ownership/beneficial-owners`, { headers: authHeaders }),
+          fetch(`${API}/master/banks`, { headers: authHeaders }),
+          fetch(`${API}/tenants`, { headers: authHeaders })
+        ]);
+        
+        if (legalRes.ok) setLegalOwners(await legalRes.json());
+        if (benRes.ok) setBeneficialOwners(await benRes.json());
+        if (bankRes.ok) setBanks(await bankRes.json());
+        if (tenantRes.ok) setTenants(await tenantRes.json());
+      } catch (err) {
+        console.error("Failed to fetch dropdowns", err);
+      }
+    };
+    if (unitModalOpen) fetchDropdowns();
+  }, [unitModalOpen, authHeaders]);
 
   const handleAddUnit = async () => {
     if (!unitData.unit_number) return;
@@ -74,7 +104,11 @@ const PropertyDetail: React.FC = () => {
         unit_number: unitData.unit_number,
         unit_type: unitData.unit_type,
         area_sqft: unitData.area_sqft ? parseFloat(unitData.area_sqft) : null,
-        status: unitData.status
+        status: unitData.status,
+        ...(unitData.legal_owner_id && { legal_owner_id: unitData.legal_owner_id }),
+        ...(unitData.beneficial_owner_id && { beneficial_owner_id: unitData.beneficial_owner_id }),
+        ...(unitData.bank_id && { bank_id: unitData.bank_id }),
+        ...(unitData.tenant_id && { tenant_id: unitData.tenant_id })
       };
       const res = await fetch(`${API}/properties/${propertyId}/units`, {
         method: 'POST',
@@ -83,7 +117,7 @@ const PropertyDetail: React.FC = () => {
       });
       if (!res.ok) throw new Error('Failed to add unit');
       setUnitModalOpen(false);
-      setUnitData({ unit_number: '', unit_type: 'Apartment', area_sqft: '', status: 'Vacant' });
+      setUnitData({ unit_number: '', unit_type: 'Apartment', area_sqft: '', status: 'Vacant', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '' });
       fetchProperty();
     } catch (e: any) {
       alert(e.message);
@@ -237,6 +271,63 @@ const PropertyDetail: React.FC = () => {
           >
             {['Vacant', 'Occupied', 'Maintenance'].map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </TextField>
+          
+          <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+          <Typography variant="subtitle2" color="text.secondary">Optional Associations (Auto-creates records)</Typography>
+          
+          <TextField 
+            select 
+            label="Legal Owner" 
+            value={unitData.legal_owner_id} 
+            onChange={(e) => setUnitData({...unitData, legal_owner_id: e.target.value})}
+            fullWidth
+          >
+            <MenuItem value=""><em>None</em></MenuItem>
+            {legalOwners.map(owner => (
+              <MenuItem key={owner.legal_owner_id} value={owner.legal_owner_id}>{owner.full_name}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField 
+            select 
+            label="Beneficial Owner" 
+            value={unitData.beneficial_owner_id} 
+            onChange={(e) => setUnitData({...unitData, beneficial_owner_id: e.target.value})}
+            fullWidth
+          >
+            <MenuItem value=""><em>None</em></MenuItem>
+            {beneficialOwners.map(owner => (
+              <MenuItem key={owner.beneficial_owner_id} value={owner.beneficial_owner_id}>{owner.full_name}</MenuItem>
+            ))}
+          </TextField>
+          
+          <TextField 
+            select 
+            label="Bank Account" 
+            value={unitData.bank_id} 
+            onChange={(e) => setUnitData({...unitData, bank_id: e.target.value})}
+            fullWidth
+            disabled={!unitData.beneficial_owner_id}
+            helperText={!unitData.beneficial_owner_id ? 'Select Beneficiary first' : ''}
+          >
+            <MenuItem value=""><em>None</em></MenuItem>
+            {banks.map(bank => (
+              <MenuItem key={bank.bank_id} value={bank.bank_id}>{bank.bank_name}</MenuItem>
+            ))}
+          </TextField>
+          
+          <TextField 
+            select 
+            label="Tenant" 
+            value={unitData.tenant_id} 
+            onChange={(e) => setUnitData({...unitData, tenant_id: e.target.value})}
+            fullWidth
+          >
+            <MenuItem value=""><em>None</em></MenuItem>
+            {tenants.map(tenant => (
+              <MenuItem key={tenant.tenant_id} value={tenant.tenant_id}>{tenant.first_name} {tenant.last_name}</MenuItem>
             ))}
           </TextField>
         </DialogContent>

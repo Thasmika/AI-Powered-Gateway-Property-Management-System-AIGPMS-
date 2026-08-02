@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Grid, Divider, Button, Avatar, CircularProgress, Alert, Chip
 } from '@mui/material';
@@ -43,7 +43,7 @@ const TitleDeedDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchTitleDeed = useCallback(async () => {
     setLoading(true);
@@ -54,7 +54,7 @@ const TitleDeedDetail: React.FC = () => {
       setTitleDeed(await res.json());
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [titleDeedId, token]);
+  }, [titleDeedId, authHeaders]);
 
   useEffect(() => { fetchTitleDeed(); }, [fetchTitleDeed]);
 
@@ -122,7 +122,7 @@ const TitleDeedDetail: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ color: 'white' }}>Acquisition Cost</Typography>
               {!titleDeed.acquisition_costs && (
-                <Button size="small" variant="outlined" sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Record Cost</Button>
+                <Button size="small" variant="outlined" onClick={() => navigate(`/title-deeds/${titleDeedId}/acquisition-cost`)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Record Cost</Button>
               )}
             </Box>
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />

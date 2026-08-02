@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip
 } from '@mui/material';
@@ -29,7 +29,7 @@ interface BeneficiaryAllocation {
   effective_from: string | null;
   effective_to: string | null;
   is_current: boolean;
-  beneficiary: Owner;
+  beneficial_owner?: Owner;
 }
 
 interface OwnershipRecord {
@@ -40,7 +40,7 @@ interface OwnershipRecord {
   effective_from: string | null;
   effective_to: string | null;
   is_current: boolean;
-  owner: Owner;
+  legal_owner?: Owner;
   beneficiary_allocations: BeneficiaryAllocation[];
 }
 
@@ -56,7 +56,7 @@ const OwnershipDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -78,7 +78,7 @@ const OwnershipDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, token]);
+  }, [id, authHeaders]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -122,7 +122,7 @@ const OwnershipDetail: React.FC = () => {
             <Box sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box>
                 <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
-                  {record.owner.full_name} <Chip size="small" label={record.ownership_type} sx={{ ml: 1, bgcolor: '#6366f120', color: '#6366f1' }} />
+                  {record.legal_owner?.full_name || 'Unknown'} <Chip size="small" label={record.ownership_type} sx={{ ml: 1, bgcolor: '#6366f120', color: '#6366f1' }} />
                 </Typography>
                 <Typography variant="body2" color="text.secondary">Effective: {record.effective_from || 'N/A'}</Typography>
               </Box>
@@ -150,7 +150,7 @@ const OwnershipDetail: React.FC = () => {
                     <TableBody>
                       {record.beneficiary_allocations.map(alloc => (
                         <TableRow key={alloc.allocation_id} sx={{ '& td': { borderColor: 'rgba(255,255,255,0.04)' } }}>
-                          <TableCell sx={{ color: 'white' }}>{alloc.beneficiary.full_name}</TableCell>
+                          <TableCell sx={{ color: 'white' }}>{alloc.beneficial_owner?.full_name || 'Unknown'}</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 600 }}>{Number(alloc.allocation_percentage)}%</TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
