@@ -31,7 +31,7 @@ def list_properties(
     query = db.query(Property)
     if status_filter:
         query = query.filter(Property.status == status_filter)
-    return query.all()
+    return query.order_by(Property.property_name.asc()).all()
 
 @router.post("", response_model=PropertyOut, status_code=status.HTTP_201_CREATED)
 def create_property(

@@ -71,3 +71,25 @@ def update_tenant(
     db.commit()
     db.refresh(tenant)
     return tenant
+
+@router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_tenant(
+    tenant_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    """
+    Delete a tenant by ID.
+    """
+    tenant = db.query(Tenant).filter(Tenant.tenant_id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    try:
+        db.delete(tenant)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete tenant. It may be linked to existing records.")
+    
+    return None

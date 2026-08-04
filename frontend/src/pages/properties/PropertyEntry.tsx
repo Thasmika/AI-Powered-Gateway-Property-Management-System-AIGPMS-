@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar
+  Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar, Autocomplete
 } from '@mui/material';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -30,8 +30,24 @@ const PropertyEntry: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
+  const [propertyTypes, setPropertyTypes] = useState<any[]>([]);
 
   useEffect(() => {
+    const fetchPropertyTypes = async () => {
+      try {
+        const res = await fetch(`${API}/master/property-types`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPropertyTypes(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch property types", e);
+      }
+    };
+    fetchPropertyTypes();
+
     if (isEditMode) {
       const fetchProperty = async () => {
         try {
@@ -136,11 +152,14 @@ const PropertyEntry: React.FC = () => {
               <TextField name="property_name" label="Property Name *" value={formData.property_name} onChange={handleChange} fullWidth />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField name="property_type" label="Property Type" value={formData.property_type} onChange={handleChange} fullWidth select>
-                {['Apartment', 'Villa', 'Townhouse', 'Commercial', 'Land', 'Labour Camp'].map(opt => (
-                  <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                ))}
-              </TextField>
+              <Autocomplete
+                freeSolo
+                options={propertyTypes.map((pt) => pt.type_name)}
+                value={formData.property_type}
+                onChange={(_, newValue) => setFormData({ ...formData, property_type: newValue || '' })}
+                onInputChange={(_, newInputValue) => setFormData({ ...formData, property_type: newInputValue })}
+                renderInput={(params) => <TextField {...params} label="Property Type" fullWidth />}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField name="status" label="Status" value={formData.status} onChange={handleChange} fullWidth select>

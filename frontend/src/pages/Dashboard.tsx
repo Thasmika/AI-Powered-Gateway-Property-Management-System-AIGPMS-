@@ -15,6 +15,8 @@ import ApartmentIcon from '@mui/icons-material/Apartment';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import ShieldIcon from '@mui/icons-material/Shield';
 import ChatIcon from '@mui/icons-material/Chat';
+import HeroCarousel from '../components/dashboard/HeroCarousel';
+import PhotoWall from '../components/dashboard/PhotoWall';
 
 const Dashboard: React.FC = () => {
   const { user, role } = useAuth();
@@ -192,27 +194,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box className="flex flex-col gap-6">
-      {/* Header greeting */}
-      <Box className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/30 p-6 rounded-2xl border border-white/5 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[200px] h-[200px] rounded-full bg-indigo-500/5 blur-[50px] pointer-events-none"></div>
-        <Box className="flex flex-col gap-1">
-          <Typography variant="h4" className="font-bold text-white">
-            Hello, {user?.full_name}!
-          </Typography>
-          <Typography variant="body1" className="text-slate-400">
-            Welcome to the AI Powered Gateway Property Management System. You are logged in as the <span className="text-indigo-400 font-semibold">{role}</span>.
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          component={Link}
-          to="/ai-assistant"
-          startIcon={<ChatIcon />}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-all"
-        >
-          Ask AI Assistant
-        </Button>
-      </Box>
+      <HeroCarousel user={user} role={role} />
+      <PhotoWall />
 
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">

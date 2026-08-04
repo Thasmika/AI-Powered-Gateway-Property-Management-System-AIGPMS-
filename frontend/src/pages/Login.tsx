@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -14,7 +14,13 @@ import {
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import ApartmentIcon from '@mui/icons-material/Apartment';
-import dubaiSkyline from '../assets/dubai_skyline.png';
+
+const DUMMY_PHOTOS = [
+  '/assets/dummy/penthouse.png',
+  '/assets/dummy/villa.png',
+  '/assets/dummy/tower.png',
+  '/assets/dummy/apartment.png',
+];
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -24,6 +30,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % DUMMY_PHOTOS.length);
+    }, 6000); // Change photo every 6 seconds
+    return () => clearInterval(timer);
+  }, []);
 
   // Get the redirect path if passed, or default to home/dashboard
   const from = location.state?.from?.pathname || '/';
@@ -61,12 +75,28 @@ const Login: React.FC = () => {
   return (
     <Box
       className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url(${dubaiSkyline})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      sx={{ bgcolor: '#0f172a' }}
     >
+      {/* Background Images with crossfade */}
+      {DUMMY_PHOTOS.map((photo, index) => (
+        <Box
+          key={index}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url(${photo})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: index === currentIndex ? 1 : 0,
+            transition: 'opacity 1.5s ease-in-out',
+            zIndex: 0
+          }}
+        />
+      ))}
+
       {/* Decorative Blur Orbs */}
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[450px] h-[450px] rounded-full bg-cyan-950/20 blur-[100px] pointer-events-none"></div>

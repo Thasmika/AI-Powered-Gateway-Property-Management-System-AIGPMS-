@@ -5,7 +5,7 @@ import os
 from app.core.config import settings
 from app.database.session import engine, Base, SessionLocal
 from app.database.init_db import init_db
-from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership, tenants, leases, receipts, pdc_received, pdc_issued, alerts
+from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership, tenants, leases, receipts, pdc_received, pdc_issued, alerts, upload
 
 # ── Register ALL models with SQLAlchemy metadata ──────────────────────────────
 # This must happen BEFORE create_all() so every table is created on startup.
@@ -58,6 +58,7 @@ app.add_middleware(
 
 # ── API Routers ───────────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
+app.include_router(upload.router, prefix=f"{settings.API_V1_STR}/upload", tags=["Uploads"])
 app.include_router(master_data.router, prefix=f"{settings.API_V1_STR}/master", tags=["Master Data"])
 app.include_router(properties.router, prefix=f"{settings.API_V1_STR}/properties", tags=["Properties"])
 app.include_router(title_deeds.router, prefix=f"{settings.API_V1_STR}/title-deeds", tags=["Title Deeds"])

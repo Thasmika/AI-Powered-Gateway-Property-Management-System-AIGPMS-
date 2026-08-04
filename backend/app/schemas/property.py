@@ -11,8 +11,14 @@ class PropertyUnitBase(BaseModel):
     unit_number: str
     unit_type: Optional[str] = None
     floor_number: Optional[str] = None
+    balcony: Optional[str] = None
     area_sqft: Optional[Decimal] = None
     status: Optional[str] = "Vacant"
+    unit_description: Optional[str] = None
+    photo_1: Optional[str] = None
+    photo_2: Optional[str] = None
+    photo_3: Optional[str] = None
+    photo_4: Optional[str] = None
 
 class PropertyUnitCreate(PropertyUnitBase):
     legal_owner_id: Optional[str] = None
@@ -24,8 +30,14 @@ class PropertyUnitUpdate(BaseModel):
     unit_number: Optional[str] = None
     unit_type: Optional[str] = None
     floor_number: Optional[str] = None
+    balcony: Optional[str] = None
     area_sqft: Optional[Decimal] = None
     status: Optional[str] = None
+    unit_description: Optional[str] = None
+    photo_1: Optional[str] = None
+    photo_2: Optional[str] = None
+    photo_3: Optional[str] = None
+    photo_4: Optional[str] = None
 
 class PropertyUnitOut(PropertyUnitBase):
     model_config = ConfigDict(from_attributes=True)
@@ -177,6 +189,7 @@ class PropertyBase(BaseModel):
     total_units: Optional[int] = None
     total_area_sqft: Optional[Decimal] = None
     status: Optional[str] = "Active"
+    main_photo: Optional[str] = None
 
 class PropertyCreate(PropertyBase):
     pass
@@ -194,6 +207,7 @@ class PropertyUpdate(BaseModel):
     total_units: Optional[int] = None
     total_area_sqft: Optional[Decimal] = None
     status: Optional[str] = None
+    main_photo: Optional[str] = None
 
 class PropertyOut(PropertyBase):
     model_config = ConfigDict(from_attributes=True)

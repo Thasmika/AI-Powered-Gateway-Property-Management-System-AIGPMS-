@@ -23,6 +23,7 @@ import ApartmentIcon from '@mui/icons-material/Apartment';
 import GavelIcon from '@mui/icons-material/Gavel';
 import PeopleIcon from '@mui/icons-material/People';
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import ArticleIcon from '@mui/icons-material/Article';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import DomainIcon from '@mui/icons-material/Domain';
@@ -76,6 +77,7 @@ const MainLayout: React.FC = () => {
       { text: 'Ownership',              icon: <GavelIcon />,                path: '/ownership',     roles: ['Managing Director', 'Accountant', 'Administrator'] },
       // ── Tenancy ──────────────────────────────────────────────────────────
       { text: 'Tenants & Leases',       icon: <PeopleIcon />,               path: '/tenants-leases', roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Tenants Contract',       icon: <ArticleIcon />,              path: '/leases',         roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
       { text: 'Rental Collection',      icon: <ReceiptIcon />,              path: '/pdc/receipts',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
       // ── PDC ──────────────────────────────────────────────────────────────
       { text: 'PDC Received',           icon: <MoneyOffIcon />,             path: '/pdc/register',  roles: ['Managing Director', 'Accountant', 'Administrator'] },
@@ -122,7 +124,12 @@ const MainLayout: React.FC = () => {
             >
               <MenuIcon />
             </IconButton>
-            <ApartmentIcon sx={{ color: '#6366f1', fontSize: 28 }} />
+            <Box
+              component="img"
+              src="/assets/logo.png"
+              alt="AIGPMS Logo"
+              sx={{ width: 32, height: 32, borderRadius: '8px' }}
+            />
             <Typography variant="h6" noWrap className="font-extrabold tracking-tight text-white">
               AIGPMS
             </Typography>

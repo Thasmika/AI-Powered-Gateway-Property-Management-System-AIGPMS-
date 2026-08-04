@@ -9,7 +9,7 @@ from app.models.property import (
 )
 from app.models.auth import User
 from app.schemas.property import (
-    TitleDeedCreate, TitleDeedOut, 
+    TitleDeedCreate, TitleDeedOut, TitleDeedUpdate,
     PropertyAcquisitionCostCreate, PropertyAcquisitionCostOut,
     PropertyValuationCreate, PropertyValuationOut
 )
@@ -73,6 +73,59 @@ def get_title_deed(
     if not db_obj:
         raise HTTPException(status_code=404, detail="Title Deed not found")
     return db_obj
+
+@router.put("/{title_deed_id}", response_model=TitleDeedOut)
+def update_title_deed(
+    title_deed_id: str,
+    payload: TitleDeedUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Update title deed"""
+    db_obj = db.query(TitleDeed).filter(TitleDeed.title_deed_id == title_deed_id).first()
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Title Deed not found")
+        
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_obj, key, value)
+        
+    db.commit()
+    db.refresh(db_obj)
+    
+    create_audit_log(
+        db=db,
+        user_id=current_user.user_id,
+        action="Update Title Deed",
+        module="TitleDeed",
+        old_value=None,
+        new_value=f"Updated Title Deed {title_deed_id}"
+    )
+    return db_obj
+
+@router.delete("/{title_deed_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_title_deed(
+    title_deed_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Delete title deed"""
+    db_obj = db.query(TitleDeed).filter(TitleDeed.title_deed_id == title_deed_id).first()
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Title Deed not found")
+        
+    db.delete(db_obj)
+    db.commit()
+    
+    create_audit_log(
+        db=db,
+        user_id=current_user.user_id,
+        action="Delete Title Deed",
+        module="TitleDeed",
+        old_value=title_deed_id,
+        new_value=None
+    )
+    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

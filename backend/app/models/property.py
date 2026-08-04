@@ -41,6 +41,7 @@ class Property(Base):
     total_units       = Column(Integer, nullable=True)
     total_area_sqft   = Column(Numeric(12, 2), nullable=True)
     status            = Column(String(30), default="Active")  # Active, Inactive, Under Construction
+    main_photo        = Column(String(500), nullable=True)
     created_by        = Column(String(36), ForeignKey("users.user_id"), nullable=True)
     created_at        = Column(DateTime, default=datetime.utcnow)
     updated_at        = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -62,8 +63,14 @@ class PropertyUnit(Base):
     unit_number    = Column(String(50), nullable=False)
     unit_type      = Column(String(50), nullable=True)   # Studio, 1BR, 2BR, Room, Bed Space …
     floor_number   = Column(String(20), nullable=True)
+    balcony        = Column(String(50), nullable=True)   # With Balcony / Without Balcony
     area_sqft      = Column(Numeric(10, 2), nullable=True)
     status         = Column(String(30), default="Vacant")  # Vacant, Occupied, Under Maintenance
+    unit_description = Column(Text, nullable=True)
+    photo_1        = Column(String(500), nullable=True)
+    photo_2        = Column(String(500), nullable=True)
+    photo_3        = Column(String(500), nullable=True)
+    photo_4        = Column(String(500), nullable=True)
     created_at     = Column(DateTime, default=datetime.utcnow)
 
     property       = relationship("Property", back_populates="units")

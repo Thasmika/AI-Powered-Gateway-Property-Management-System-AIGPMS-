@@ -49,6 +49,19 @@ def update_legal_owner(legal_owner_id: str, owner_in: LegalOwnerUpdate, db: Sess
     db.refresh(owner)
     return owner
 
+@router.delete("/legal-owners/{legal_owner_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_legal_owner(legal_owner_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    owner = db.query(LegalOwner).filter(LegalOwner.legal_owner_id == legal_owner_id).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Legal Owner not found")
+    try:
+        db.delete(owner)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete owner. It may be linked to existing records.")
+    return None
+
 # ----------------- BENEFICIAL OWNERS -----------------
 
 @router.get("/beneficial-owners", response_model=List[BeneficialOwnerResponse])
@@ -83,6 +96,19 @@ def update_beneficial_owner(beneficial_owner_id: str, owner_in: BeneficialOwnerU
     db.commit()
     db.refresh(owner)
     return owner
+
+@router.delete("/beneficial-owners/{beneficial_owner_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_beneficial_owner(beneficial_owner_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    owner = db.query(BeneficialOwner).filter(BeneficialOwner.beneficial_owner_id == beneficial_owner_id).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Beneficial Owner not found")
+    try:
+        db.delete(owner)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete owner. It may be linked to existing records.")
+    return None
 
 # ----------------- OWNERSHIP RECORDS -----------------
 
