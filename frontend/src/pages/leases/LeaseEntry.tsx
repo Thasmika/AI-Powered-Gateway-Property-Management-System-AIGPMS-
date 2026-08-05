@@ -3,12 +3,15 @@ import {
   Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import { useNavigate, useLocation } from 'react-router-dom';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import api from '../../services/api';
 
 const LeaseEntry: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { leaseId } = useParams<{ leaseId: string }>();
+  const isEditMode = Boolean(leaseId);
   const queryParams = new URLSearchParams(location.search);
   const tenantIdParam = queryParams.get('tenantId');
   
@@ -42,6 +45,7 @@ const LeaseEntry: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contractFile, setContractFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -61,6 +65,44 @@ const LeaseEntry: React.FC = () => {
     fetchDropdownData();
   }, []);
 
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchLease = async () => {
+        try {
+          const res = await api.get(`/leases/${leaseId}`);
+          const data = res.data;
+          const currentVersion = data.versions?.find((v: any) => v.is_current_version) || data.versions?.[0] || {};
+          
+          setFormData(prev => ({
+            ...prev,
+            lease_number: data.lease_number || '',
+            property_id: data.property_id || '',
+            unit_id: data.unit_id || '',
+            tenant_id: data.tenant_id || '',
+            lease_type: data.lease_type || 'Residential',
+            status: data.status || 'Active',
+            
+            contract_start_date: currentVersion.contract_start_date || '',
+            contract_end_date: currentVersion.contract_end_date || '',
+            annual_rent: currentVersion.annual_rent || '',
+            currency: currentVersion.currency || 'AED',
+            payment_frequency: currentVersion.payment_frequency || 'Monthly',
+            number_of_cheques: currentVersion.number_of_cheques || '4',
+            security_deposit: currentVersion.security_deposit || '',
+            agent_commission: currentVersion.agent_commission || '',
+            municipality_fee: currentVersion.municipality_fee || '',
+            ejari_number: currentVersion.ejari_number || '',
+            contract_reference: currentVersion.contract_reference || '',
+            notes: currentVersion.notes || ''
+          }));
+        } catch (e: any) {
+          setError(e.response?.data?.detail || e.message || 'Failed to fetch lease');
+        }
+      };
+      fetchLease();
+    }
+  }, [isEditMode, leaseId]);
+
   // Fetch units when property changes
   useEffect(() => {
     const fetchUnits = async () => {
@@ -72,7 +114,10 @@ const LeaseEntry: React.FC = () => {
         const res = await api.get(`/properties/${formData.property_id}`);
         setUnits(res.data.units || []);
         // reset unit_id if it's not in the new list
-        setFormData(prev => ({ ...prev, unit_id: '' }));
+        setFormData(prev => {
+          const unitExists = res.data.units?.some((u: any) => u.unit_id == prev.unit_id);
+          return unitExists ? prev : { ...prev, unit_id: '' };
+        });
       } catch (e: any) {
         console.error("Failed to fetch units", e);
       }
@@ -94,7 +139,17 @@ const LeaseEntry: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
-      const payload = {
+      let documentUrl = '';
+      if (contractFile) {
+        const fileData = new FormData();
+        fileData.append('file', contractFile);
+        const uploadRes = await api.post('/upload/file', fileData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        documentUrl = uploadRes.data.url;
+      }
+
+      const payload: any = {
         lease_number: formData.lease_number,
         property_id: formData.property_id,
         unit_id: formData.unit_id,
@@ -117,10 +172,25 @@ const LeaseEntry: React.FC = () => {
         }
       };
 
-      const res = await api.post('/leases', payload);
-      navigate(`/tenants-leases/leases/${res.data.lease_id}`);
+      if (documentUrl) {
+        payload.documents = [{
+          document_type: "Tenancy Contract",
+          document_name: contractFile?.name || "Contract.pdf",
+          file_path: documentUrl
+        }];
+      }
+
+      if (isEditMode) {
+        // Since backend doesn't have a full update endpoint yet, we'll just redirect for now or show a message.
+        // Usually here would be: await api.put(`/leases/${leaseId}`, payload);
+        alert("Editing leases is currently limited by the backend. Readonly for now.");
+        navigate(`/tenants-leases/leases/${leaseId}`);
+      } else {
+        const res = await api.post('/leases', payload);
+        navigate(`/tenants-leases/leases/${res.data.lease_id}`);
+      }
     } catch (e: any) {
-      setError(e.response?.data?.detail || e.message || 'Failed to create lease');
+      setError(e.response?.data?.detail || e.message || `Failed to ${isEditMode ? 'update' : 'create'} lease`);
     } finally {
       setSaving(false);
     }
@@ -131,10 +201,12 @@ const LeaseEntry: React.FC = () => {
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(isEditMode ? `/tenants-leases/leases/${leaseId}` : '/tenants-leases/leases')}
+          sx={{ color: 'text.secondary' }}>Back</Button>
         <Avatar sx={{ bgcolor: '#6366f120', color: '#6366f1', width: 48, height: 48 }}>
           <AssignmentIcon />
         </Avatar>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>Create New Lease</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>{isEditMode ? 'Edit Lease' : 'Create New Lease'}</Typography>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -234,12 +306,24 @@ const LeaseEntry: React.FC = () => {
               <TextField name="notes" label="Notes" value={formData.notes} onChange={handleChange} fullWidth multiline rows={2} />
             </Grid>
 
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, mb: 1 }}>Contract Document</Typography>
+              <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />
+            </Grid>
+            <Grid item xs={12}>
+              <Button variant="outlined" component="label" sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                Upload Document (PDF, DOCX)
+                <input type="file" hidden accept=".pdf,.doc,.docx" onChange={(e) => setContractFile(e.target.files?.[0] || null)} />
+              </Button>
+              {contractFile && <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>Selected: {contractFile.name}</Typography>}
+            </Grid>
+
             <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-              <Button variant="outlined" onClick={() => navigate(-1)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
+              <Button variant="outlined" onClick={() => navigate(isEditMode ? `/tenants-leases/leases/${leaseId}` : '/tenants-leases/leases')} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={saving} sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
-                {saving ? <CircularProgress size={24} sx={{ mr: 1, color: 'white' }} /> : 'Create Lease'}
+                {saving ? <CircularProgress size={24} sx={{ mr: 1, color: 'white' }} /> : (isEditMode ? 'Update Lease' : 'Create Lease')}
               </Button>
             </Grid>
           </Grid>

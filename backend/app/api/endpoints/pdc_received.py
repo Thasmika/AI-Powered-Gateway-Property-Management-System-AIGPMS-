@@ -12,6 +12,11 @@ from app.models.pdc import (
 from app.schemas.pdc import (
     PDCReceivedResponse, PDCStatusUpdate, ChequeReturnCreate, ChequeReplacementCreate
 )
+from pydantic import BaseModel
+
+class PDCAttachmentUpdate(BaseModel):
+    attachment_path: str
+
 
 router = APIRouter()
 
@@ -55,6 +60,23 @@ def get_pdc_detail(
     pdc = db.query(PDCReceived).filter(PDCReceived.pdc_received_id == pdc_id).first()
     if not pdc:
         raise HTTPException(status_code=404, detail="PDC not found")
+    return pdc
+
+
+@router.patch("/{pdc_id}/attachment", response_model=PDCReceivedResponse)
+def update_pdc_attachment(
+    pdc_id: str,
+    update_data: PDCAttachmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    pdc = db.query(PDCReceived).filter(PDCReceived.pdc_received_id == pdc_id).first()
+    if not pdc:
+        raise HTTPException(status_code=404, detail="PDC not found")
+        
+    pdc.attachment_path = update_data.attachment_path
+    db.commit()
+    db.refresh(pdc)
     return pdc
 
 

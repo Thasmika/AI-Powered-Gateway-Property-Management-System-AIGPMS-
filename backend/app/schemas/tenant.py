@@ -23,8 +23,27 @@ class TenantBase(BaseModel):
     status: Optional[str] = "Active"
     notes: Optional[str] = None
 
-class TenantCreate(TenantBase):
+class TenantDocumentBase(BaseModel):
+    document_type: str
+    document_name: str
+    file_path: str
+    expiry_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class TenantDocumentCreate(TenantDocumentBase):
     pass
+
+class TenantDocumentOut(TenantDocumentBase):
+    document_id: str
+    tenant_id: str
+    uploaded_by: Optional[str] = None
+    upload_date: datetime
+
+    class Config:
+        from_attributes = True
+
+class TenantCreate(TenantBase):
+    documents: Optional[List[TenantDocumentCreate]] = None
 
 class TenantUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -46,6 +65,7 @@ class TenantOut(TenantBase):
     tenant_id: str
     created_at: datetime
     updated_at: datetime
+    documents: List[TenantDocumentOut] = []
 
     class Config:
         from_attributes = True
@@ -172,6 +192,7 @@ class LeaseBase(BaseModel):
 class LeaseCreate(LeaseBase):
     lease_number: str
     initial_version: LeaseVersionCreate
+    documents: Optional[List[LeaseDocumentCreate]] = None
 
 class LeaseUpdate(BaseModel):
     lease_type: Optional[str] = None

@@ -3,6 +3,7 @@ import {
   Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -104,6 +105,8 @@ const TenantEntry: React.FC = () => {
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(isEditMode ? `/tenants-leases/tenants/${tenantId}` : '/tenants-leases/tenants')}
+          sx={{ color: 'text.secondary' }}>Back</Button>
         <Avatar sx={{ bgcolor: '#6366f120', color: '#6366f1', width: 48, height: 48 }}>
           <PersonAddIcon />
         </Avatar>
@@ -200,7 +203,7 @@ const TenantEntry: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-              <Button variant="outlined" onClick={() => navigate(-1)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
+              <Button variant="outlined" onClick={() => navigate(isEditMode ? `/tenants-leases/tenants/${tenantId}` : '/tenants-leases/tenants')} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={saving} sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>

@@ -38,6 +38,7 @@ import TenantEntry from './pages/tenants/TenantEntry';
 import TenantDetail from './pages/tenants/TenantDetail';
 import LeaseEntry from './pages/leases/LeaseEntry';
 import LeaseDetail from './pages/leases/LeaseDetail';
+import LeaseList from './pages/leases/LeaseList';
 
 import ReceiptList from './pages/pdc/ReceiptList';
 import ReceiptVoucherEntry from './pages/pdc/ReceiptVoucherEntry';
@@ -233,10 +234,34 @@ const App: React.FC = () => {
                 }
               />
               <Route
+                path="tenants-leases/leases/:leaseId/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LeaseEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="tenants-leases/leases/:leaseId"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
                     <LeaseDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="leases"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LeaseList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tenants-leases/leases"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LeaseList />
                   </ProtectedRoute>
                 }
               />

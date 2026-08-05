@@ -46,6 +46,24 @@ class Tenant(Base):
 
     leases              = relationship("Lease", back_populates="tenant")
     receipts            = relationship("RentalReceipt", back_populates="tenant")
+    documents           = relationship("TenantDocument", back_populates="tenant", cascade="all, delete-orphan")
+
+
+class TenantDocument(Base):
+    """Documents attached to a tenant (e.g., ID, Passport, Trade License)."""
+    __tablename__ = "tenant_documents"
+
+    document_id         = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id           = Column(String(36), ForeignKey("tenants.tenant_id"), nullable=False)
+    document_type       = Column(String(100), nullable=False)  # Emirates ID, Passport, Trade License, etc.
+    document_name       = Column(String(255), nullable=False)
+    file_path           = Column(String(500), nullable=False)
+    uploaded_by         = Column(String(36), ForeignKey("users.user_id"), nullable=True)
+    upload_date         = Column(DateTime, default=datetime.utcnow)
+    expiry_date         = Column(Date, nullable=True)
+    notes               = Column(Text, nullable=True)
+
+    tenant              = relationship("Tenant", back_populates="documents")
 
 
 class Lease(Base):

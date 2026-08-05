@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -7,6 +7,8 @@ const PDCReceivedDetail: React.FC = () => {
   const [pdc, setPdc] = useState<any>(null);
   const [action, setAction] = useState<string>(''); // 'deposit', 'clear', 'return', 'replace'
   const [actionData, setActionData] = useState<any>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPdc = async () => {
     try {
@@ -33,7 +35,40 @@ const PDCReceivedDetail: React.FC = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadRes = await api.post('/upload/file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      
+      const fileUrl = uploadRes.data.url;
+      
+      await api.patch(`/pdc-received/${id}/attachment`, {
+        attachment_path: fileUrl
+      });
+      
+      fetchPdc();
+      alert('Document uploaded successfully');
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'File upload failed');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (!pdc) return <div className="p-6">Loading...</div>;
+
+  const backendBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '');
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -41,16 +76,16 @@ const PDCReceivedDetail: React.FC = () => {
         <h1 className="text-2xl font-bold">PDC Details: {pdc.cheque_number}</h1>
         <div className="space-x-2">
           {pdc.status === 'Received' || pdc.status === 'Held' ? (
-            <button onClick={() => setAction('deposit')} className="bg-blue-600 text-white px-3 py-1 rounded">Deposit</button>
+            <button onClick={() => setAction('deposit')} className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">Deposit</button>
           ) : null}
           {pdc.status === 'Deposited' ? (
             <>
-              <button onClick={() => setAction('clear')} className="bg-green-600 text-white px-3 py-1 rounded">Clear</button>
-              <button onClick={() => setAction('return')} className="bg-red-600 text-white px-3 py-1 rounded">Return</button>
+              <button onClick={() => setAction('clear')} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition">Clear</button>
+              <button onClick={() => setAction('return')} className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition">Return</button>
             </>
           ) : null}
           {pdc.status === 'Returned' || pdc.status === 'Held' ? (
-            <button onClick={() => setAction('replace')} className="bg-yellow-600 text-white px-3 py-1 rounded">Replace</button>
+            <button onClick={() => setAction('replace')} className="bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 transition">Replace</button>
           ) : null}
         </div>
       </div>
@@ -66,6 +101,45 @@ const PDCReceivedDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* Document Attachment Section */}
+      <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <h2 className="text-lg font-bold mb-4">Document Attachment</h2>
+        <div className="flex items-center gap-4">
+          {pdc.attachment_path ? (
+            <div className="flex items-center gap-4">
+              <a 
+                href={`${backendBaseUrl}${pdc.attachment_path}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-indigo-600 hover:text-indigo-800 underline"
+              >
+                View Uploaded Document
+              </a>
+              <span className="text-gray-400">|</span>
+            </div>
+          ) : (
+            <p className="text-gray-500 italic text-sm">No document uploaded yet.</p>
+          )}
+          
+          <div>
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              className="hidden" 
+              onChange={handleFileUpload} 
+              accept="image/*,application/pdf"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="bg-gray-100 border border-gray-300 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition disabled:opacity-50"
+            >
+              {isUploading ? 'Uploading...' : (pdc.attachment_path ? 'Upload New Document' : 'Upload Document')}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Action Form Overlay / Section */}
       {action && (
         <div className="bg-gray-50 p-6 rounded-lg shadow border mb-6">
@@ -75,7 +149,7 @@ const PDCReceivedDetail: React.FC = () => {
             {action === 'deposit' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Deposit Bank Account</label>
-                <input type="text" className="mt-1 block w-full rounded-md border-gray-300"
+                <input type="text" className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                   onChange={e => setActionData({...actionData, deposit_bank_account: e.target.value})} />
               </div>
             )}
@@ -84,17 +158,17 @@ const PDCReceivedDetail: React.FC = () => {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Return Date</label>
-                  <input type="date" required className="mt-1 block w-full rounded-md border-gray-300"
+                  <input type="date" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                     onChange={e => setActionData({...actionData, return_date: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Return Reason</label>
-                  <input type="text" className="mt-1 block w-full rounded-md border-gray-300"
+                  <input type="text" className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                     onChange={e => setActionData({...actionData, return_reason: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Bank Charges (AED)</label>
-                  <input type="number" step="0.01" className="mt-1 block w-full rounded-md border-gray-300"
+                  <input type="number" step="0.01" className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                     onChange={e => setActionData({...actionData, bank_charges: e.target.value})} />
                 </div>
               </>
@@ -104,29 +178,29 @@ const PDCReceivedDetail: React.FC = () => {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Replacement Reason</label>
-                  <input type="text" required className="mt-1 block w-full rounded-md border-gray-300"
+                  <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                     onChange={e => setActionData({...actionData, replacement_reason: e.target.value})} />
                 </div>
                 <h3 className="text-md font-semibold mt-4">New Cheque Details</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">New Cheque No</label>
-                    <input type="text" required className="mt-1 block w-full rounded-md border-gray-300"
+                    <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                       onChange={e => setActionData({...actionData, cheque_number: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Bank Name</label>
-                    <input type="text" required className="mt-1 block w-full rounded-md border-gray-300"
+                    <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                       onChange={e => setActionData({...actionData, bank_name: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Cheque Date</label>
-                    <input type="date" required className="mt-1 block w-full rounded-md border-gray-300"
+                    <input type="date" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                       onChange={e => setActionData({...actionData, cheque_date: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Amount</label>
-                    <input type="number" step="0.01" required className="mt-1 block w-full rounded-md border-gray-300"
+                    <input type="number" step="0.01" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                       onChange={e => setActionData({...actionData, cheque_amount: e.target.value})} />
                   </div>
                 </div>
@@ -134,8 +208,8 @@ const PDCReceivedDetail: React.FC = () => {
             )}
 
             <div className="flex justify-end gap-2 mt-4">
-              <button type="button" onClick={() => setAction('')} className="px-4 py-2 border rounded">Cancel</button>
-              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Submit</button>
+              <button type="button" onClick={() => setAction('')} className="px-4 py-2 border rounded hover:bg-gray-50 transition">Cancel</button>
+              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">Submit</button>
             </div>
           </form>
         </div>
@@ -160,3 +234,4 @@ const PDCReceivedDetail: React.FC = () => {
 };
 
 export default PDCReceivedDetail;
+

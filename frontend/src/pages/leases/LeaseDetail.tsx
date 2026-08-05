@@ -1,11 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, CircularProgress, Alert, Button, Avatar, Chip, Grid,
-  Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Tooltip,
+  LinearProgress, MenuItem
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DescriptionIcon from '@mui/icons-material/Description';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import LeasePaymentSchedule from './LeasePaymentSchedule';
@@ -25,6 +32,21 @@ function CustomTabPanel(props: TabPanelProps) {
   );
 }
 
+function buildFileUrl(filePath: string): string {
+  const base = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
+  const clean = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  return `${base}${clean}`;
+}
+
+const DOCUMENT_TYPES = [
+  'Tenancy Contract',
+  'Ejari Certificate',
+  'Title Deed',
+  'Passport Copy',
+  'Emirates ID',
+  'Other'
+];
+
 const LeaseDetail: React.FC = () => {
   const { leaseId } = useParams<{ leaseId: string }>();
   const navigate = useNavigate();
@@ -42,6 +64,17 @@ const LeaseDetail: React.FC = () => {
   });
   const [renewing, setRenewing] = useState(false);
 
+  // Documents state
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  
+  const [docType, setDocType] = useState('Tenancy Contract');
+  const [docName, setDocName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const fetchLease = useCallback(async () => {
     try {
       const res = await api.get(`/leases/${leaseId}`);
@@ -53,9 +86,22 @@ const LeaseDetail: React.FC = () => {
     }
   }, [leaseId]);
 
+  const fetchDocuments = useCallback(async () => {
+    setDocsLoading(true);
+    try {
+      const res = await api.get(`/leases/${leaseId}/documents`);
+      setDocuments(res.data);
+    } catch {
+      // ignore
+    } finally {
+      setDocsLoading(false);
+    }
+  }, [leaseId]);
+
   useEffect(() => {
     fetchLease();
-  }, [fetchLease]);
+    fetchDocuments();
+  }, [fetchLease, fetchDocuments]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -68,10 +114,11 @@ const LeaseDetail: React.FC = () => {
     }
     setRenewing(true);
     try {
+      const currentVersion = lease?.versions?.find((v: any) => v.is_current_version) || lease?.versions?.[lease.versions.length - 1];
       const payload = {
         renewal_reason: renewForm.renewal_reason,
         new_version: {
-          ...currentVersion, // Copy existing details for simplicity, override with new dates/rent
+          ...currentVersion,
           contract_start_date: renewForm.contract_start_date,
           contract_end_date: renewForm.contract_end_date,
           annual_rent: parseFloat(renewForm.annual_rent) || 0
@@ -87,17 +134,60 @@ const LeaseDetail: React.FC = () => {
     }
   };
 
+  const handleUploadSubmit = async () => {
+    if (!docType || !docName || !selectedFile) {
+      setUploadError('Type, name, and file are required.');
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      const uploadRes = await api.post('/upload/file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const filePath = uploadRes.data.url;
+
+      await api.post(`/leases/${leaseId}/documents`, {
+        document_type: docType,
+        document_name: docName,
+        file_path: filePath
+      });
+
+      setUploadDialogOpen(false);
+      setDocType('Tenancy Contract');
+      setDocName('');
+      setSelectedFile(null);
+      fetchDocuments();
+    } catch (e: any) {
+      setUploadError(e.response?.data?.detail || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!window.confirm('Delete this document?')) return;
+    try {
+      await api.delete(`/leases/${leaseId}/documents/${docId}`);
+      fetchDocuments();
+    } catch (e: any) {
+      alert('Failed to delete document');
+    }
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
   if (!lease) return <Alert severity="warning" sx={{ m: 3 }}>Lease not found.</Alert>;
 
-  const currentVersion = lease.versions.find((v: any) => v.is_current_version) || lease.versions[lease.versions.length - 1];
+  const currentVersion = lease.versions?.find((v: any) => v.is_current_version) || (lease.versions?.length ? lease.versions[lease.versions.length - 1] : null);
 
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ color: 'text.secondary' }}>
+          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/tenants-leases/leases')} sx={{ color: 'text.secondary' }}>
             Back
           </Button>
           <Avatar sx={{ bgcolor: '#6366f120', color: '#6366f1', width: 48, height: 48 }}>
@@ -105,7 +195,7 @@ const LeaseDetail: React.FC = () => {
           </Avatar>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>Lease #{lease.lease_number}</Typography>
-            <Typography variant="body2" color="text.secondary">Version: {currentVersion?.version_number} | Status: <Chip label={lease.status} size="small" sx={{ ml: 1, bgcolor: lease.status === 'Active' ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)', color: lease.status === 'Active' ? '#10b981' : '#64748b' }} /></Typography>
+            <Typography variant="body2" color="text.secondary">Version: {currentVersion?.version_number || 'N/A'} | Status: <Chip label={lease.status} size="small" sx={{ ml: 1, bgcolor: lease.status === 'Active' ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)', color: lease.status === 'Active' ? '#10b981' : '#64748b' }} /></Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -122,6 +212,7 @@ const LeaseDetail: React.FC = () => {
             <Tab label="Current Version Details" />
             <Tab label="Version History" />
             <Tab label="Payment Schedule" />
+            <Tab label="Documents" />
           </Tabs>
         </Box>
 
@@ -157,7 +248,7 @@ const LeaseDetail: React.FC = () => {
 
         <CustomTabPanel value={tabValue} index={1}>
           <Grid container spacing={2}>
-            {lease.versions.map((v: any) => (
+            {lease.versions?.map((v: any) => (
               <Grid item xs={12} key={v.version_id}>
                 <Paper elevation={0} sx={{ p: 2, background: 'rgba(0,0,0,0.2)', borderRadius: 2, borderLeft: v.is_current_version ? '4px solid #10b981' : '4px solid #64748b' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -183,6 +274,59 @@ const LeaseDetail: React.FC = () => {
              <Alert severity="info">No active version found.</Alert>
           )}
         </CustomTabPanel>
+
+        <CustomTabPanel value={tabValue} index={3}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>Lease Documents</Typography>
+            <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => setUploadDialogOpen(true)}
+              sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
+              Upload Document
+            </Button>
+          </Box>
+          
+          {docsLoading && <LinearProgress sx={{ mb: 2 }} />}
+          
+          {!docsLoading && documents.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 2 }}>
+              <DescriptionIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+              <Typography>No documents uploaded yet.</Typography>
+            </Box>
+          )}
+
+          {documents.length > 0 && (
+            <TableContainer component={Paper} elevation={0} sx={{ background: 'rgba(0,0,0,0.2)' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ '& th': { color: 'text.secondary' } }}>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {documents.map((doc) => (
+                    <TableRow key={doc.document_id} sx={{ '& td': { borderColor: 'rgba(255,255,255,0.05)' } }}>
+                      <TableCell><Typography color="white" variant="body2">{doc.document_type}</Typography></TableCell>
+                      <TableCell><Typography color="white" variant="body2">{doc.document_name}</Typography></TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="View">
+                          <IconButton size="small" onClick={() => window.open(buildFileUrl(doc.file_path), '_blank')} sx={{ color: '#6366f1' }}>
+                            <OpenInNewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => handleDeleteDocument(doc.document_id)} sx={{ color: '#ef4444' }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </CustomTabPanel>
       </Paper>
 
       {/* Renew Dialog */}
@@ -200,6 +344,37 @@ const LeaseDetail: React.FC = () => {
           <Button onClick={() => setRenewDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button onClick={handleRenewSubmit} variant="contained" disabled={renewing} sx={{ bgcolor: '#6366f1' }}>
             {renewing ? <CircularProgress size={20} /> : 'Confirm Renewal'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} PaperProps={{ sx: { bgcolor: '#1e293b', color: 'white', minWidth: 400 } }}>
+        <DialogTitle>Upload Document</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField select label="Document Type" fullWidth value={docType} onChange={(e) => setDocType(e.target.value)} size="small" InputLabelProps={{ style: { color: 'rgba(255,255,255,0.6)' } }} InputProps={{ style: { color: 'white' } }}>
+                {DOCUMENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField label="Document Name" fullWidth value={docName} onChange={(e) => setDocName(e.target.value)} size="small" InputLabelProps={{ style: { color: 'rgba(255,255,255,0.6)' } }} InputProps={{ style: { color: 'white' } }} />
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ border: '1px dashed rgba(99,102,241,0.4)', borderRadius: 2, p: 2.5, textAlign: 'center', cursor: 'pointer', '&:hover': { borderColor: '#6366f1' } }} onClick={() => document.getElementById('lease-doc-upload')?.click()}>
+                <UploadFileIcon sx={{ fontSize: 36, color: '#6366f1', mb: 1 }} />
+                <Typography variant="body2" color="white">{selectedFile ? selectedFile.name : 'Click to select a file'}</Typography>
+                <input type="file" id="lease-doc-upload" hidden onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} />
+              </Box>
+            </Grid>
+            {uploadError && <Grid item xs={12}><Alert severity="error">{uploadError}</Alert></Grid>}
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setUploadDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleUploadSubmit} variant="contained" disabled={uploading} sx={{ bgcolor: '#6366f1' }}>
+            {uploading ? <CircularProgress size={20} /> : 'Upload'}
           </Button>
         </DialogActions>
       </Dialog>

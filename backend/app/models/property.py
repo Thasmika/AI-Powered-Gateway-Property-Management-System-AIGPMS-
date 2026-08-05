@@ -116,6 +116,8 @@ class TitleDeed(Base):
     loan_to_value_ratio         = Column(Numeric(5, 2), nullable=True)  # LTV %
     mortgage_expiry_date        = Column(Date, nullable=True)
 
+    attachment_path             = Column(String(500), nullable=True)
+
     created_at                  = Column(DateTime, default=datetime.utcnow)
     updated_at                  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -67,6 +67,18 @@ def create_lease(
             )
             db.add(new_schedule)
 
+    # Create Documents if provided
+    if getattr(lease_in, "documents", None):
+        from app.models.tenant import LeaseDocument
+        for doc_in in lease_in.documents:
+            new_document = LeaseDocument(
+                lease_id=new_lease.lease_id,
+                lease_version_id=new_version.version_id,
+                uploaded_by=current_user.user_id,
+                **doc_in.model_dump()
+            )
+            db.add(new_document)
+
     db.commit()
     db.refresh(new_lease)
     return new_lease
@@ -150,3 +162,61 @@ def get_payment_schedules(
         LeasePaymentSchedule.lease_version_id == version_id
     ).all()
     return schedules
+
+from app.models.tenant import LeaseDocument
+from app.schemas.tenant import LeaseDocumentOut, LeaseDocumentCreate
+
+@router.get("/{lease_id}/documents", response_model=List[LeaseDocumentOut])
+def get_lease_documents(
+    lease_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    """
+    Get all documents attached to a lease.
+    """
+    documents = db.query(LeaseDocument).filter(LeaseDocument.lease_id == lease_id).all()
+    return documents
+
+@router.post("/{lease_id}/documents", response_model=LeaseDocumentOut, status_code=status.HTTP_201_CREATED)
+def create_lease_document(
+    lease_id: str,
+    document_in: LeaseDocumentCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    """
+    Upload/attach a document to a lease.
+    """
+    lease = db.query(Lease).filter(Lease.lease_id == lease_id).first()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Lease not found")
+        
+    new_doc = LeaseDocument(
+        lease_id=lease_id,
+        uploaded_by=current_user.user_id,
+        **document_in.model_dump()
+    )
+    db.add(new_doc)
+    db.commit()
+    db.refresh(new_doc)
+    return new_doc
+
+@router.delete("/{lease_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lease_document(
+    lease_id: str,
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    doc = db.query(LeaseDocument).filter(
+        LeaseDocument.lease_id == lease_id,
+        LeaseDocument.document_id == document_id
+    ).first()
+    
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    db.delete(doc)
+    db.commit()
+    return None

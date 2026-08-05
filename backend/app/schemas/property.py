@@ -154,6 +154,7 @@ class TitleDeedBase(BaseModel):
     outstanding_loan: Optional[Decimal] = None
     loan_to_value_ratio: Optional[Decimal] = None
     mortgage_expiry_date: Optional[date] = None
+    attachment_path: Optional[str] = None
 
 class TitleDeedCreate(TitleDeedBase):
     pass

@@ -31,6 +31,7 @@ interface TitleDeedDetail {
   outstanding_loan: number | null;
   loan_to_value_ratio: number | null;
   acquisition_costs: PropertyAcquisitionCost | null;
+  attachment_path?: string | null;
 }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -42,6 +43,7 @@ const TitleDeedDetail: React.FC = () => {
   const [titleDeed, setTitleDeed] = useState<TitleDeedDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
@@ -57,6 +59,41 @@ const TitleDeedDetail: React.FC = () => {
   }, [titleDeedId, authHeaders]);
 
   useEffect(() => { fetchTitleDeed(); }, [fetchTitleDeed]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await fetch(`${API}/upload/file`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error('Failed to upload file');
+      const uploadData = await uploadRes.json();
+
+      const updateRes = await fetch(`${API}/title-deeds/${titleDeedId}`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ attachment_path: uploadData.url }),
+      });
+
+      if (!updateRes.ok) throw new Error('Failed to update title deed');
+      
+      await fetchTitleDeed();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
   if (error || !titleDeed) return <Alert severity="error">{error || 'Title Deed not found'}</Alert>;
@@ -76,6 +113,18 @@ const TitleDeedDetail: React.FC = () => {
           <Typography variant="subtitle1" color="text.secondary">Legal Owner: {titleDeed.legal_owner || '—'}</Typography>
         </Box>
         <Chip label={titleDeed.ownership_status} sx={{ ml: 'auto', bgcolor: titleDeed.ownership_status === 'Active' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)', color: titleDeed.ownership_status === 'Active' ? '#10b981' : 'white' }} />
+        
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" component="label" disabled={isUploading} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+            {isUploading ? 'Uploading...' : 'Add File'}
+            <input type="file" hidden onChange={handleFileUpload} />
+          </Button>
+          {titleDeed.attachment_path && (
+            <Button variant="contained" onClick={() => window.open(`${API.replace('/api/v1', '')}${titleDeed.attachment_path}`, '_blank')}>
+              Review File
+            </Button>
+          )}
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
