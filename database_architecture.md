@@ -253,3 +253,4 @@ All dropdowns and reference data in the system are data-driven. No hardcoded enu
 1. **Immutable History**: Valuation changes, lease renewals, and cheque status changes NEVER overwrite the previous state. They create new records or version history rows.
 2. **Separation of PDCs**: PDCs are isolated instruments, not JSON blobs inside a receipt. This allows independent tracking, banking, and bouncing of a single cheque out of a 4-cheque payment.
 3. **Double-Entry Cashflow**: Commitments (`cashflow_commitments`) track incoming vs. outgoing capital independently of whether the physical invoice is paid, enabling real-time future liquidity predictions.
+now 

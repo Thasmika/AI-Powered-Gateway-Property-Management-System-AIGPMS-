@@ -19,6 +19,8 @@ const TenantEntry: React.FC = () => {
     id_number: '',
     id_type: 'Emirates ID',
     id_expiry: '',
+    passport_number: '',
+    passport_expiry_date: '',
     nationality: '',
     email: '',
     phone: '',
@@ -47,6 +49,8 @@ const TenantEntry: React.FC = () => {
             id_number: data.id_number || '',
             id_type: data.id_type || 'Emirates ID',
             id_expiry: data.id_expiry ? data.id_expiry.split('T')[0] : '',
+            passport_number: data.passport_number || '',
+            passport_expiry_date: data.passport_expiry_date ? data.passport_expiry_date.split('T')[0] : '',
             nationality: data.nationality || '',
             email: data.email || '',
             phone: data.phone || '',
@@ -83,7 +87,9 @@ const TenantEntry: React.FC = () => {
     try {
       const payload = {
         ...formData,
-        id_expiry: formData.id_expiry ? formData.id_expiry : null
+        id_expiry: formData.id_expiry ? formData.id_expiry : null,
+        passport_expiry_date: formData.passport_expiry_date ? formData.passport_expiry_date : null,
+        email: formData.email ? formData.email : null
       };
 
       if (isEditMode) {
@@ -149,21 +155,27 @@ const TenantEntry: React.FC = () => {
               <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, mb: 1 }}>Identification</Typography>
               <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField name="id_type" label="ID Type" value={formData.id_type} onChange={handleChange} fullWidth select>
                 {['Emirates ID', 'Passport', 'Trade License'].map(opt => (
                   <MenuItem key={opt} value={opt}>{opt}</MenuItem>
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField name="id_number" label="ID Number" value={formData.id_number} onChange={handleChange} fullWidth />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField name="id_expiry" label="ID Expiry" type="date" InputLabelProps={{ shrink: true }} value={formData.id_expiry} onChange={handleChange} fullWidth />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField name="nationality" label="Nationality" value={formData.nationality} onChange={handleChange} fullWidth />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField name="passport_number" label="Passport Number" value={formData.passport_number} onChange={handleChange} fullWidth />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField name="passport_expiry_date" label="Passport Expiry" type="date" InputLabelProps={{ shrink: true }} value={formData.passport_expiry_date} onChange={handleChange} fullWidth />
             </Grid>
 
             <Grid item xs={12} sx={{ mt: 2 }}>

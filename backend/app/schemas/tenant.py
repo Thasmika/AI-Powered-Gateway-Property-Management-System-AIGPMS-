@@ -13,6 +13,8 @@ class TenantBase(BaseModel):
     id_number: Optional[str] = None
     id_type: Optional[str] = None
     id_expiry: Optional[date] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
     nationality: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
@@ -51,6 +53,8 @@ class TenantUpdate(BaseModel):
     id_number: Optional[str] = None
     id_type: Optional[str] = None
     id_expiry: Optional[date] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
     nationality: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None

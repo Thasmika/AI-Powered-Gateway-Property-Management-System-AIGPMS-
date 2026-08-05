@@ -5,6 +5,8 @@ import {
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -83,6 +85,27 @@ const OwnershipList: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const handleDelete = async (propertyId: string) => {
+    if (!window.confirm('Are you sure you want to delete all ownership records for this property? This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API}/ownership/records/by-property/${propertyId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      });
+      if (!res.ok) {
+        let errorMsg = 'Failed to delete ownership records';
+        try {
+          const data = await res.json();
+          if (data && data.detail) errorMsg = data.detail;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const getProgressColor = (percentage: number) => {
     if (percentage === 100) return 'success';
     if (percentage > 0) return 'warning';
@@ -158,9 +181,19 @@ const OwnershipList: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell align="center">
-                      <Tooltip title="Manage Ownership">
+                      <Tooltip title="View Ownership">
                         <IconButton size="small" onClick={() => navigate(`/ownership/${group.property.property_id}`)} sx={{ color: '#10b981' }}>
                           <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit Ownership">
+                        <IconButton size="small" onClick={() => navigate(`/ownership/${group.property.property_id}`)} sx={{ color: '#3b82f6' }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Ownership">
+                        <IconButton size="small" onClick={() => handleDelete(group.property.property_id)} sx={{ color: '#ef4444' }}>
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </TableCell>

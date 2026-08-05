@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, TextField, Button, Grid, Alert,
   CircularProgress, MenuItem
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import { useAuth } from '../../context/AuthContext';
@@ -12,6 +12,8 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const TitleDeedEntry: React.FC = () => {
   const navigate = useNavigate();
+  const { titleDeedId } = useParams<{ titleDeedId: string }>();
+  const isEdit = !!titleDeedId;
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +26,40 @@ const TitleDeedEntry: React.FC = () => {
     ownership_percentage: '',
     loan_number: '',
     mortgage_bank: '',
-    outstanding_loan: ''
+    outstanding_loan: '',
+    plot_number: '',
+    issue_date: ''
   });
+  const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (isEdit && titleDeedId) {
+      const fetchTitleDeed = async () => {
+        try {
+          const res = await fetch(`${API}/title-deeds/${titleDeedId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setFormData({
+              unit_id: data.unit_id || '',
+              title_deed_number: data.title_deed_number || '',
+              municipality_property_number: data.municipality_property_number || '',
+              ownership_percentage: data.ownership_percentage ? data.ownership_percentage.toString() : '',
+              loan_number: data.loan_number || '',
+              mortgage_bank: data.mortgage_bank || '',
+              outstanding_loan: data.outstanding_loan ? data.outstanding_loan.toString() : '',
+              plot_number: data.plot_number || '',
+              issue_date: data.issue_date || ''
+            });
+          }
+        } catch (e) {
+          console.error("Failed to fetch title deed", e);
+        }
+      };
+      fetchTitleDeed();
+    }
+  }, [titleDeedId, isEdit, token]);
 
   useEffect(() => {
     // Fetch units to populate the dropdown
@@ -63,19 +97,45 @@ const TitleDeedEntry: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    const payload = {
-      title_deed_number: formData.title_deed_number || null,
-      municipality_property_number: formData.municipality_property_number || null,
-      ownership_percentage: formData.ownership_percentage ? parseFloat(formData.ownership_percentage) : null,
-      loan_number: formData.loan_number || null,
-      mortgage_bank: formData.mortgage_bank || null,
-      outstanding_loan: formData.outstanding_loan ? parseFloat(formData.outstanding_loan) : null,
-      ownership_status: "Active"
-    };
-
     try {
-      const res = await fetch(`${API}/title-deeds?unit_id=${formData.unit_id}`, {
-        method: 'POST',
+      let attachment_path = null;
+      if (file) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        const uploadRes = await fetch(`${API}/upload/file`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formDataUpload
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          attachment_path = uploadData.url;
+        } else {
+          console.error("File upload failed");
+        }
+      }
+
+      const payload: any = {
+        title_deed_number: formData.title_deed_number || null,
+        municipality_property_number: formData.municipality_property_number || null,
+        ownership_percentage: formData.ownership_percentage ? parseFloat(formData.ownership_percentage) : null,
+        loan_number: formData.loan_number || null,
+        mortgage_bank: formData.mortgage_bank || null,
+        outstanding_loan: formData.outstanding_loan ? parseFloat(formData.outstanding_loan) : null,
+        plot_number: formData.plot_number || null,
+        issue_date: formData.issue_date || null,
+        ownership_status: "Active"
+      };
+
+      if (attachment_path) {
+        payload.attachment_path = attachment_path;
+      }
+
+      const url = isEdit ? `${API}/title-deeds/${titleDeedId}` : `${API}/title-deeds?unit_id=${formData.unit_id}`;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
@@ -85,7 +145,7 @@ const TitleDeedEntry: React.FC = () => {
       
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.detail || 'Failed to create title deed');
+        throw new Error(data.detail || `Failed to ${isEdit ? 'update' : 'create'} title deed`);
       }
       navigate('/title-deeds');
     } catch (err: any) {
@@ -101,7 +161,7 @@ const TitleDeedEntry: React.FC = () => {
       </Button>
 
       <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', mb: 3 }}>
-        Register Title Deed
+        {isEdit ? 'Edit Title Deed' : 'Register Title Deed'}
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
@@ -153,6 +213,29 @@ const TitleDeedEntry: React.FC = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
+                label="Plot Number"
+                name="plot_number"
+                value={formData.plot_number}
+                onChange={handleChange}
+                InputLabelProps={{ sx: { color: 'text.secondary' } }}
+                sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, color: 'white' } }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Issue Date"
+                type="date"
+                name="issue_date"
+                value={formData.issue_date}
+                onChange={handleChange}
+                InputLabelProps={{ shrink: true, sx: { color: 'text.secondary' } }}
+                sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, color: 'white' } }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
                 label="Ownership Percentage"
                 name="ownership_percentage"
                 type="number"
@@ -162,6 +245,73 @@ const TitleDeedEntry: React.FC = () => {
                 InputLabelProps={{ sx: { color: 'text.secondary' } }}
                 sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, color: 'white' } }}
               />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ color: 'white', mt: 2, mb: 1 }}>Title Deed Document</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              {!file ? (
+                <Button
+                  variant="outlined"
+                  component="label"
+                  sx={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}
+                >
+                  Upload Document
+                  <input
+                    type="file"
+                    hidden
+                    accept="application/pdf,image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </Button>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', px: 2, py: 1, borderRadius: 1 }}>
+                    {file.name}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      const url = URL.createObjectURL(file);
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    View File
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    size="small"
+                    sx={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}
+                  >
+                    Replace
+                    <input
+                      type="file"
+                      hidden
+                      accept="application/pdf,image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </Button>
+                  <Button
+                    variant="text"
+                    color="error"
+                    size="small"
+                    onClick={() => setFile(null)}
+                  >
+                    Clear
+                  </Button>
+                </Box>
+              )}
             </Grid>
 
             <Grid item xs={12}>
@@ -212,7 +362,7 @@ const TitleDeedEntry: React.FC = () => {
                 disabled={loading}
                 sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
               >
-                {loading ? 'Saving...' : 'Register Title Deed'}
+                {loading ? 'Saving...' : (isEdit ? 'Update Title Deed' : 'Register Title Deed')}
               </Button>
             </Grid>
           </Grid>

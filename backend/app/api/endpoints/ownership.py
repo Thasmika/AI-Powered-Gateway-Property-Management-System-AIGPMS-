@@ -168,6 +168,35 @@ def update_ownership_record(ownership_id: str, record_in: OwnershipRecordUpdate,
     db.refresh(record)
     return record
 
+@router.delete("/records/{ownership_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ownership_record(ownership_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    record = db.query(OwnershipRecord).filter(OwnershipRecord.ownership_id == ownership_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Ownership record not found")
+    try:
+        # Also delete associated beneficiary allocations to avoid foreign key constraints
+        db.query(BeneficiaryAllocation).filter(BeneficiaryAllocation.ownership_record_id == ownership_id).delete()
+        db.delete(record)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete ownership record. It may be linked to other data.")
+    return None
+
+@router.delete("/records/by-property/{property_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ownership_records_by_property(property_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    records = db.query(OwnershipRecord).filter(OwnershipRecord.property_id == property_id).all()
+    if not records:
+        raise HTTPException(status_code=404, detail="No ownership records found for this property")
+    try:
+        for record in records:
+            db.query(BeneficiaryAllocation).filter(BeneficiaryAllocation.ownership_record_id == record.ownership_id).delete()
+            db.delete(record)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete ownership records.")
+    return None
 
 # ----------------- BENEFICIARY ALLOCATIONS -----------------
 
@@ -226,3 +255,17 @@ def update_beneficiary_allocation(allocation_id: str, alloc_in: BeneficiaryAlloc
     db.commit()
     db.refresh(alloc)
     return alloc
+
+@router.delete("/beneficiaries/{allocation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_beneficiary_allocation(allocation_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+    alloc = db.query(BeneficiaryAllocation).filter(BeneficiaryAllocation.allocation_id == allocation_id).first()
+    if not alloc:
+        raise HTTPException(status_code=404, detail="Beneficiary allocation not found")
+    try:
+        db.delete(alloc)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete beneficiary allocation.")
+    return None
+

@@ -69,6 +69,24 @@ def get_property(
     db_obj = db.query(Property).filter(Property.property_id == property_id).first()
     if not db_obj:
         raise HTTPException(status_code=404, detail="Property not found")
+        
+    for unit in db_obj.units:
+        if unit.title_deed:
+            unit.legal_owner_id = unit.title_deed.legal_owner_id
+            unit.beneficial_owner_id = unit.title_deed.beneficial_owner_id
+            
+        active_lease = next((l for l in unit.leases if l.status != "Terminated"), None)
+        if active_lease:
+            unit.tenant_id = active_lease.tenant_id
+            
+        active_ownership = next((o for o in unit.ownership_records if o.is_current), None)
+        if active_ownership:
+            allocation = next((a for a in active_ownership.beneficiary_allocations if a.is_current), None)
+            if allocation and allocation.bank_name:
+                bank = db.query(MasterBank).filter(MasterBank.bank_name == allocation.bank_name).first()
+                if bank:
+                    unit.bank_id = bank.bank_id
+                    
     return db_obj
 
 @router.put("/{property_id}", response_model=PropertyOut)
@@ -146,10 +164,10 @@ def recalculate_property_totals(db: Session, property_id: str):
     if not prop: return
     
     total_units = db.query(func.count(PropertyUnit.unit_id)).filter(PropertyUnit.property_id == property_id).scalar() or 0
-    total_area = db.query(func.sum(PropertyUnit.area_sqft)).filter(PropertyUnit.property_id == property_id).scalar() or 0
+    total_area = db.query(func.sum(PropertyUnit.area_sqm)).filter(PropertyUnit.property_id == property_id).scalar() or 0
     
     prop.total_units = total_units
-    prop.total_area_sqft = total_area
+    prop.total_area_sqm = total_area
     db.commit()
 
 @router.get("/{property_id}/units", response_model=List[PropertyUnitOut])
@@ -158,8 +176,24 @@ def list_property_units(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """List units for a given property"""
-    return db.query(PropertyUnit).filter(PropertyUnit.property_id == property_id).all()
+    units = db.query(PropertyUnit).filter(PropertyUnit.property_id == property_id).all()
+    for unit in units:
+        if unit.title_deed:
+            unit.legal_owner_id = unit.title_deed.legal_owner_id
+            unit.beneficial_owner_id = unit.title_deed.beneficial_owner_id
+            
+        active_lease = next((l for l in unit.leases if l.status != "Terminated"), None)
+        if active_lease:
+            unit.tenant_id = active_lease.tenant_id
+            
+        active_ownership = next((o for o in unit.ownership_records if o.is_current), None)
+        if active_ownership:
+            allocation = next((a for a in active_ownership.beneficiary_allocations if a.is_current), None)
+            if allocation and allocation.bank_name:
+                bank = db.query(MasterBank).filter(MasterBank.bank_name == allocation.bank_name).first()
+                if bank:
+                    unit.bank_id = bank.bank_id
+    return units
 
 @router.post("/{property_id}/units", response_model=PropertyUnitOut, status_code=status.HTTP_201_CREATED)
 def create_property_unit(

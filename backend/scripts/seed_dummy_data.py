@@ -87,15 +87,15 @@ def clear_business_data(db: Session):
     db.query(LeasePaymentSchedule).delete()
     db.query(LeaseVersion).delete()
     db.query(Lease).delete()
-    db.query(BeneficiaryAllocation).delete()
-    db.query(OwnershipRecord).delete()
-    db.query(PropertyAcquisitionCost).delete()
-    db.query(PropertyValuation).delete()
-    db.query(TitleDeed).delete()
-    db.query(PropertyUnit).delete()
-    db.query(Property).delete()
-    db.query(BeneficialOwner).delete()
-    db.query(LegalOwner).delete()
+    # db.query(BeneficiaryAllocation).delete()
+    # db.query(OwnershipRecord).delete()
+    # db.query(PropertyAcquisitionCost).delete()
+    # db.query(PropertyValuation).delete()
+    # db.query(TitleDeed).delete()
+    # db.query(PropertyUnit).delete()
+    # db.query(Property).delete()
+    # db.query(BeneficialOwner).delete()
+    # db.query(LegalOwner).delete()
     db.query(Tenant).delete()
     db.commit()
     log("Done clearing.")
@@ -103,478 +103,53 @@ def clear_business_data(db: Session):
 
 def seed_dummy_data(db: Session):
 
-    # ── 1. Legal Owners ──────────────────────────────────────────────────────
+    # ── 1 to 9. PRESERVED REAL PROPERTY MASTER DATA ──────────────────────────
+    log("Fetching real Property Master data instead of seeding dummies...")
+    properties = db.query(Property).all()
+    if not properties:
+        log("No properties found! Please enter real properties in the UI first.")
+        fallback_p = Property(
+            property_id=gen_id(), property_code="FB-001", property_name="Fallback Property",
+            property_type="Apartment", community="Dubai Marina", emirate="Dubai",
+            total_units=1, total_area_sqm=Decimal("1000.00"), status="Active"
+        )
+        fallback_u = PropertyUnit(
+            unit_id=gen_id(), property_id=fallback_p.property_id, unit_number="FB-101",
+            unit_type="2BR Apartment", status="Vacant"
+        )
+        db.add_all([fallback_p, fallback_u])
+        db.commit()
+        properties = [fallback_p]
+        units = [fallback_u]
+    else:
+        units = db.query(PropertyUnit).all()
+        if not units:
+            log("Properties exist but no units found! Creating fallback unit.")
+            fallback_u = PropertyUnit(
+                unit_id=gen_id(), property_id=properties[0].property_id, unit_number="FB-101",
+                unit_type="2BR Apartment", status="Vacant"
+            )
+            db.add(fallback_u)
+            db.commit()
+            units = [fallback_u]
 
-    log("Seeding Legal Owners...")
-    lo1 = LegalOwner(
-        legal_owner_id=gen_id(),
-        owner_type="Individual",
-        full_name="Sheikh Mohammed Al-Rashidi",
-        id_number="784-1975-1234567-1",
-        id_type="Emirates ID",
-        nationality="Emirati",
-        email="m.alrashidi@gateway.ae",
-        phone="+971 50 123 4567",
-        address="Villa 12, Emirates Hills, Dubai, UAE",
-        status="Active"
-    )
-    lo2 = LegalOwner(
-        legal_owner_id=gen_id(),
-        owner_type="Company",
-        full_name="Gateway Real Estate Holdings LLC",
-        trade_name="Gateway Holdings",
-        id_number="TL-2018-DXB-98765",
-        id_type="Trade License",
-        nationality="UAE",
-        email="info@gateway.ae",
-        phone="+971 4 567 8901",
-        address="Office 2401, Burj Khalifa, Downtown Dubai",
-        status="Active"
-    )
-    lo3 = LegalOwner(
-        legal_owner_id=gen_id(),
-        owner_type="Individual",
-        full_name="Fatima Khalid Al-Mansoori",
-        id_number="784-1982-9876543-2",
-        id_type="Emirates ID",
-        nationality="Emirati",
-        email="f.almansoori@gmail.com",
-        phone="+971 55 987 6543",
-        address="Al Reem Island, Abu Dhabi, UAE",
-        status="Active"
-    )
-    db.add_all([lo1, lo2, lo3])
-    db.commit()
+    p1 = properties[0]
+    p2 = properties[1] if len(properties) > 1 else properties[0]
+    p3 = properties[2] if len(properties) > 2 else properties[0]
+    p4 = properties[3] if len(properties) > 3 else properties[0]
+    p5 = properties[4] if len(properties) > 4 else properties[0]
 
-    # ── 2. Beneficial Owners ─────────────────────────────────────────────────
+    def get_unit(prop_id):
+        for u in units:
+            if u.property_id == prop_id:
+                return u
+        return units[0]
 
-    log("Seeding Beneficial Owners...")
-    bo1 = BeneficialOwner(
-        beneficial_owner_id=gen_id(),
-        owner_type="Individual",
-        full_name="Sheikh Mohammed Al-Rashidi",
-        id_number="784-1975-1234567-1",
-        id_type="Emirates ID",
-        nationality="Emirati",
-        email="m.alrashidi@gateway.ae",
-        phone="+971 50 123 4567",
-        status="Active"
-    )
-    bo2 = BeneficialOwner(
-        beneficial_owner_id=gen_id(),
-        owner_type="Company",
-        full_name="Gateway Real Estate Holdings LLC",
-        trade_name="Gateway Holdings",
-        id_number="TL-2018-DXB-98765",
-        id_type="Trade License",
-        nationality="UAE",
-        email="finance@gateway.ae",
-        phone="+971 4 567 8901",
-        status="Active"
-    )
-    bo3 = BeneficialOwner(
-        beneficial_owner_id=gen_id(),
-        owner_type="Individual",
-        full_name="Fatima Khalid Al-Mansoori",
-        id_number="784-1982-9876543-2",
-        id_type="Emirates ID",
-        nationality="Emirati",
-        email="f.almansoori@gmail.com",
-        phone="+971 55 987 6543",
-        status="Active"
-    )
-    db.add_all([bo1, bo2, bo3])
-    db.commit()
-
-    # ── 3. Properties ────────────────────────────────────────────────────────
-
-    log("Seeding Properties...")
-
-    p1 = Property(
-        property_id=gen_id(),
-        property_code="PROP-001",
-        property_name="Marina Heights Tower",
-        property_type="Apartment",
-        building_name="Marina Heights",
-        community="Dubai Marina",
-        emirate="Dubai",
-        address_line_1="Plot 15, Marina Walk",
-        address_line_2="Dubai Marina",
-        gps_location="25.0819, 55.1367",
-        total_units=12,
-        total_area_sqft=Decimal("18500.00"),
-        status="Active"
-    )
-    p2 = Property(
-        property_id=gen_id(),
-        property_code="PROP-002",
-        property_name="Business Bay Office Suite",
-        property_type="Office",
-        building_name="Aspect Tower",
-        community="Business Bay",
-        emirate="Dubai",
-        address_line_1="Marasi Drive, Business Bay",
-        address_line_2="Dubai",
-        gps_location="25.1865, 55.2617",
-        total_units=3,
-        total_area_sqft=Decimal("4200.00"),
-        status="Active"
-    )
-    p3 = Property(
-        property_id=gen_id(),
-        property_code="PROP-003",
-        property_name="JVC Villa Complex",
-        property_type="Villa",
-        building_name="Jasmine Villas",
-        community="Jumeirah Village Circle (JVC)",
-        emirate="Dubai",
-        address_line_1="District 12, JVC",
-        address_line_2="Dubai",
-        gps_location="25.0567, 55.2134",
-        total_units=4,
-        total_area_sqft=Decimal("12800.00"),
-        status="Active"
-    )
-    p4 = Property(
-        property_id=gen_id(),
-        property_code="PROP-004",
-        property_name="Al Quoz Industrial Warehouse",
-        property_type="Warehouse",
-        building_name=None,
-        community="Al Quoz Industrial",
-        emirate="Dubai",
-        address_line_1="Street 10, Al Quoz Industrial Area 3",
-        address_line_2="Dubai",
-        gps_location="25.1322, 55.2456",
-        total_units=1,
-        total_area_sqft=Decimal("8000.00"),
-        status="Active"
-    )
-    p5 = Property(
-        property_id=gen_id(),
-        property_code="PROP-005",
-        property_name="Yas Island Labour Camp",
-        property_type="Labour Camp",
-        building_name="Gateway Camp Block A",
-        community="Yas Island",
-        emirate="Abu Dhabi",
-        address_line_1="Yas Industrial Zone, Plot 7",
-        address_line_2="Abu Dhabi",
-        gps_location="24.4965, 54.6087",
-        total_units=50,
-        total_area_sqft=Decimal("25000.00"),
-        status="Active"
-    )
-    db.add_all([p1, p2, p3, p4, p5])
-    db.commit()
-
-    log("Seeding Property Documents...")
-    doc1 = PropertyDocument(
-        document_id=gen_id(),
-        property_id=p1.property_id,
-        document_type="Floor Plan",
-        document_name="Marina Heights 2BR Floor Plan.pdf",
-        file_path="/uploads/properties/floor_plan_marina.pdf",
-        file_size_kb=1500
-    )
-    create_dummy_pdf(doc1.file_path)
-    
-    doc2 = PropertyDocument(
-        document_id=gen_id(),
-        property_id=p2.property_id,
-        document_type="Insurance",
-        document_name="Business Bay Office Insurance.pdf",
-        file_path="/uploads/properties/insurance_bb.pdf",
-        file_size_kb=2400
-    )
-    create_dummy_pdf(doc2.file_path)
-    db.add_all([doc1, doc2])
-    db.commit()
-
-    # ── 4. Property Units ────────────────────────────────────────────────────
-
-    log("Seeding Property Units...")
-
-    # Marina Heights — 3 sample units
-    u1 = PropertyUnit(unit_id=gen_id(), property_id=p1.property_id, unit_number="101", unit_type="2BR Apartment", floor_number="1", area_sqft=Decimal("1450.00"), status="Occupied")
-    u2 = PropertyUnit(unit_id=gen_id(), property_id=p1.property_id, unit_number="201", unit_type="3BR Apartment", floor_number="2", area_sqft=Decimal("1850.00"), status="Occupied")
-    u3 = PropertyUnit(unit_id=gen_id(), property_id=p1.property_id, unit_number="301", unit_type="Studio", floor_number="3", area_sqft=Decimal("650.00"), status="Vacant")
-
-    # Business Bay — 2 units
-    u4 = PropertyUnit(unit_id=gen_id(), property_id=p2.property_id, unit_number="A-04", unit_type="Office", floor_number="4", area_sqft=Decimal("1200.00"), status="Occupied")
-    u5 = PropertyUnit(unit_id=gen_id(), property_id=p2.property_id, unit_number="A-05", unit_type="Office", floor_number="4", area_sqft=Decimal("980.00"), status="Vacant")
-
-    # JVC Villas — 2 units
-    u6 = PropertyUnit(unit_id=gen_id(), property_id=p3.property_id, unit_number="V-01", unit_type="4BR Villa", floor_number="G", area_sqft=Decimal("3200.00"), status="Occupied")
-    u7 = PropertyUnit(unit_id=gen_id(), property_id=p3.property_id, unit_number="V-02", unit_type="3BR Villa", floor_number="G", area_sqft=Decimal("2800.00"), status="Occupied")
-
-    # Warehouse — 1 unit
-    u8 = PropertyUnit(unit_id=gen_id(), property_id=p4.property_id, unit_number="WH-01", unit_type="Warehouse", floor_number="G", area_sqft=Decimal("8000.00"), status="Occupied")
-
-    # Labour Camp — 1 block unit
-    u9 = PropertyUnit(unit_id=gen_id(), property_id=p5.property_id, unit_number="BLK-A", unit_type="Labour Camp Block", floor_number="G", area_sqft=Decimal("25000.00"), status="Occupied")
-
-    units = [u1, u2, u3, u4, u5, u6, u7, u8, u9]
-    db.add_all(units)
-    db.commit()
-
-    # ── 5. Title Deeds ───────────────────────────────────────────────────────
-
-    log("Seeding Title Deeds...")
-
-    td1 = TitleDeed(
-        title_deed_id=gen_id(), unit_id=u1.unit_id,
-        title_deed_number="TD-DXB-2019-001245",
-        municipality_property_number="MUN-15-0112",
-        plot_number="PLT-15-MRN", unit_number="101",
-        legal_owner_id=lo1.legal_owner_id,
-        beneficial_owner_id=bo1.beneficial_owner_id,
-        ownership_percentage=Decimal("100.00"),
-        purchase_method="Mortgage",
-        ownership_status="Mortgaged",
-        loan_number="LN-ENBD-2019-44521",
-        mortgage_status="Mortgaged",
-        mortgage_bank="Emirates NBD",
-        outstanding_loan=Decimal("1250000.00"),
-        loan_to_value_ratio=Decimal("62.50"),
-        mortgage_expiry_date=date(2029, 6, 30)
-    )
-    td2 = TitleDeed(
-        title_deed_id=gen_id(), unit_id=u2.unit_id,
-        title_deed_number="TD-DXB-2020-005512",
-        plot_number="PLT-15-MRN", unit_number="201",
-        legal_owner_id=lo2.legal_owner_id,
-        beneficial_owner_id=bo2.beneficial_owner_id,
-        ownership_percentage=Decimal("100.00"),
-        purchase_method="Cash",
-        ownership_status="Active",
-        mortgage_status="Clear"
-    )
-    td3 = TitleDeed(
-        title_deed_id=gen_id(), unit_id=u4.unit_id,
-        title_deed_number="TD-DXB-2021-009871",
-        plot_number="PLT-BB-07", unit_number="A-04",
-        legal_owner_id=lo2.legal_owner_id,
-        beneficial_owner_id=bo2.beneficial_owner_id,
-        ownership_percentage=Decimal("100.00"),
-        purchase_method="Cash",
-        ownership_status="Active",
-        mortgage_status="Clear"
-    )
-    td4 = TitleDeed(
-        title_deed_id=gen_id(), unit_id=u6.unit_id,
-        title_deed_number="TD-DXB-2022-017654",
-        plot_number="PLT-JVC-12", unit_number="V-01",
-        legal_owner_id=lo3.legal_owner_id,
-        beneficial_owner_id=bo3.beneficial_owner_id,
-        ownership_percentage=Decimal("100.00"),
-        purchase_method="Mortgage",
-        ownership_status="Mortgaged",
-        mortgage_bank="Abu Dhabi Islamic Bank (ADIB)",
-        outstanding_loan=Decimal("980000.00"),
-        loan_to_value_ratio=Decimal("55.00"),
-        mortgage_expiry_date=date(2032, 3, 15)
-    )
-    td5 = TitleDeed(
-        title_deed_id=gen_id(), unit_id=u8.unit_id,
-        title_deed_number="TD-DXB-2018-002341",
-        plot_number="PLT-AQ-10", unit_number="WH-01",
-        legal_owner_id=lo2.legal_owner_id,
-        beneficial_owner_id=bo2.beneficial_owner_id,
-        ownership_percentage=Decimal("100.00"),
-        purchase_method="Cash",
-        ownership_status="Active",
-        mortgage_status="Clear"
-    )
-    db.add_all([td1, td2, td3, td4, td5])
-    db.commit()
-
-    # ── 6. Acquisition Costs ─────────────────────────────────────────────────
-
-    log("Seeding Acquisition Costs...")
-
-    ac1 = PropertyAcquisitionCost(
-        acquisition_id=gen_id(), title_deed_id=td1.title_deed_id,
-        purchase_date=date(2019, 6, 15),
-        purchase_price=Decimal("1800000.00"),
-        purchase_currency="AED",
-        seller_name="Dubai Properties LLC",
-        purchase_agreement_number="SPA-DP-2019-0112",
-        title_transfer_date=date(2019, 7, 1),
-        registration_fees=Decimal("72000.00"),
-        broker_commission=Decimal("54000.00"),
-        other_acquisition_costs=Decimal("15000.00"),
-        total_acquisition_cost=Decimal("1941000.00"),
-        notes="Marina Heights Unit 101 — SPA signed June 2019"
-    )
-    ac2 = PropertyAcquisitionCost(
-        acquisition_id=gen_id(), title_deed_id=td2.title_deed_id,
-        purchase_date=date(2020, 3, 10),
-        purchase_price=Decimal("2400000.00"),
-        purchase_currency="AED",
-        seller_name="Emaar Properties",
-        purchase_agreement_number="SPA-EM-2020-0551",
-        title_transfer_date=date(2020, 4, 5),
-        registration_fees=Decimal("96000.00"),
-        broker_commission=Decimal("72000.00"),
-        other_acquisition_costs=Decimal("18000.00"),
-        total_acquisition_cost=Decimal("2586000.00"),
-        notes="Marina Heights Unit 201 — Full cash purchase"
-    )
-    ac3 = PropertyAcquisitionCost(
-        acquisition_id=gen_id(), title_deed_id=td3.title_deed_id,
-        purchase_date=date(2021, 9, 20),
-        purchase_price=Decimal("1200000.00"),
-        purchase_currency="AED",
-        seller_name="Business Bay Developers",
-        purchase_agreement_number="SPA-BBD-2021-0987",
-        title_transfer_date=date(2021, 10, 12),
-        registration_fees=Decimal("48000.00"),
-        broker_commission=Decimal("36000.00"),
-        other_acquisition_costs=Decimal("8000.00"),
-        total_acquisition_cost=Decimal("1292000.00"),
-        notes="Business Bay Office A-04"
-    )
-    ac4 = PropertyAcquisitionCost(
-        acquisition_id=gen_id(), title_deed_id=td4.title_deed_id,
-        purchase_date=date(2022, 1, 5),
-        purchase_price=Decimal("3200000.00"),
-        purchase_currency="AED",
-        seller_name="Nakheel Properties",
-        purchase_agreement_number="SPA-NK-2022-0176",
-        title_transfer_date=date(2022, 2, 20),
-        registration_fees=Decimal("128000.00"),
-        broker_commission=Decimal("96000.00"),
-        other_acquisition_costs=Decimal("22000.00"),
-        total_acquisition_cost=Decimal("3446000.00"),
-        notes="JVC Villa V-01 — Mortgage through ADIB"
-    )
-    ac5 = PropertyAcquisitionCost(
-        acquisition_id=gen_id(), title_deed_id=td5.title_deed_id,
-        purchase_date=date(2018, 4, 1),
-        purchase_price=Decimal("2800000.00"),
-        purchase_currency="AED",
-        seller_name="TECOM Investments",
-        purchase_agreement_number="SPA-TC-2018-0234",
-        title_transfer_date=date(2018, 5, 15),
-        registration_fees=Decimal("112000.00"),
-        broker_commission=Decimal("84000.00"),
-        other_acquisition_costs=Decimal("25000.00"),
-        total_acquisition_cost=Decimal("3021000.00"),
-        notes="Al Quoz Industrial Warehouse"
-    )
-    db.add_all([ac1, ac2, ac3, ac4, ac5])
-    db.commit()
-
-    # ── 7. Property Valuations ───────────────────────────────────────────────
-
-    log("Seeding Property Valuations...")
-
-    today = date.today()
-
-    valuations = [
-        # P1 Marina Heights — 2 valuations
-        PropertyValuation(valuation_id=gen_id(), property_id=p1.property_id, market_value=Decimal("3800000.00"), valuation_date=date(2022, 12, 31), valuation_source="RERA", valuation_method="Comparable Sales", valuer_name="JLL UAE", appreciation_percentage=Decimal("15.8"), notes="Annual valuation 2022"),
-        PropertyValuation(valuation_id=gen_id(), property_id=p1.property_id, market_value=Decimal("4350000.00"), valuation_date=date(2023, 12, 31), valuation_source="RERA", valuation_method="Comparable Sales", valuer_name="CBRE UAE", appreciation_percentage=Decimal("24.1"), notes="Annual valuation 2023"),
-        # P2 Business Bay
-        PropertyValuation(valuation_id=gen_id(), property_id=p2.property_id, market_value=Decimal("2600000.00"), valuation_date=date(2022, 12, 31), valuation_source="Internal", valuation_method="Income Approach", valuer_name="Knight Frank", appreciation_percentage=Decimal("18.2"), notes="Annual valuation 2022"),
-        PropertyValuation(valuation_id=gen_id(), property_id=p2.property_id, market_value=Decimal("2950000.00"), valuation_date=date(2023, 12, 31), valuation_source="RERA", valuation_method="Comparable Sales", valuer_name="Savills UAE", appreciation_percentage=Decimal("22.9"), notes="Annual valuation 2023"),
-        # P3 JVC Villa
-        PropertyValuation(valuation_id=gen_id(), property_id=p3.property_id, market_value=Decimal("4100000.00"), valuation_date=date(2023, 6, 30), valuation_source="RERA", valuation_method="Comparable Sales", valuer_name="Asteco", appreciation_percentage=Decimal("19.0"), notes="Mid-year valuation 2023"),
-        PropertyValuation(valuation_id=gen_id(), property_id=p3.property_id, market_value=Decimal("4600000.00"), valuation_date=date(2024, 1, 15), valuation_source="Internal", valuation_method="Comparable Sales", valuer_name="Asteco", appreciation_percentage=Decimal("33.5"), notes="Annual valuation 2024"),
-        # P4 Warehouse
-        PropertyValuation(valuation_id=gen_id(), property_id=p4.property_id, market_value=Decimal("3500000.00"), valuation_date=date(2023, 3, 31), valuation_source="Internal", valuation_method="Income Approach", valuer_name="Internal Estimate", appreciation_percentage=Decimal("15.8"), notes="Quarterly estimate"),
-        PropertyValuation(valuation_id=gen_id(), property_id=p4.property_id, market_value=Decimal("3750000.00"), valuation_date=date(2024, 3, 31), valuation_source="Internal", valuation_method="Income Approach", valuer_name="Internal Estimate", appreciation_percentage=Decimal("24.1"), notes="Annual estimate 2024"),
-        # P5 Labour Camp
-        PropertyValuation(valuation_id=gen_id(), property_id=p5.property_id, market_value=Decimal("4200000.00"), valuation_date=date(2023, 12, 31), valuation_source="Internal", valuation_method="Income Approach", valuer_name="Internal Estimate", appreciation_percentage=Decimal("8.5"), notes="Annual estimate 2023"),
-    ]
-    db.add_all(valuations)
-    db.commit()
-
-    # ── 8. Ownership Records ─────────────────────────────────────────────────
-
-    log("Seeding Ownership Records...")
-
-    or1 = OwnershipRecord(
-        ownership_id=gen_id(), property_id=p1.property_id, unit_id=u1.unit_id,
-        legal_owner_id=lo1.legal_owner_id, ownership_type="Legal",
-        ownership_percentage=Decimal("100.00"), effective_from=date(2019, 7, 1), is_current=True
-    )
-    or2 = OwnershipRecord(
-        ownership_id=gen_id(), property_id=p1.property_id, unit_id=u2.unit_id,
-        legal_owner_id=lo2.legal_owner_id, ownership_type="Legal",
-        ownership_percentage=Decimal("100.00"), effective_from=date(2020, 4, 5), is_current=True
-    )
-    or3 = OwnershipRecord(
-        ownership_id=gen_id(), property_id=p2.property_id, unit_id=u4.unit_id,
-        legal_owner_id=lo2.legal_owner_id, ownership_type="Legal",
-        ownership_percentage=Decimal("100.00"), effective_from=date(2021, 10, 12), is_current=True
-    )
-    or4 = OwnershipRecord(
-        ownership_id=gen_id(), property_id=p3.property_id, unit_id=u6.unit_id,
-        legal_owner_id=lo3.legal_owner_id, ownership_type="Legal",
-        ownership_percentage=Decimal("100.00"), effective_from=date(2022, 2, 20), is_current=True
-    )
-    or5 = OwnershipRecord(
-        ownership_id=gen_id(), property_id=p4.property_id, unit_id=u8.unit_id,
-        legal_owner_id=lo2.legal_owner_id, ownership_type="Legal",
-        ownership_percentage=Decimal("100.00"), effective_from=date(2018, 5, 15), is_current=True
-    )
-    db.add_all([or1, or2, or3, or4, or5])
-    db.commit()
-
-    # ── 9. Beneficiary Allocations ───────────────────────────────────────────
-
-    log("Seeding Beneficiary Allocations...")
-
-    ba1 = BeneficiaryAllocation(
-        allocation_id=gen_id(), ownership_record_id=or1.ownership_id,
-        beneficial_owner_id=bo1.beneficial_owner_id,
-        allocation_percentage=Decimal("100.00"),
-        bank_account_name="Sheikh Mohammed Al-Rashidi",
-        bank_name="Emirates NBD",
-        iban="AE070260001015643421001",
-        effective_from=date(2019, 7, 1), is_current=True
-    )
-    ba2 = BeneficiaryAllocation(
-        allocation_id=gen_id(), ownership_record_id=or2.ownership_id,
-        beneficial_owner_id=bo2.beneficial_owner_id,
-        allocation_percentage=Decimal("100.00"),
-        bank_account_name="Gateway Real Estate Holdings LLC",
-        bank_name="First Abu Dhabi Bank (FAB)",
-        iban="AE330350001020100369862",
-        effective_from=date(2020, 4, 5), is_current=True
-    )
-    ba3 = BeneficiaryAllocation(
-        allocation_id=gen_id(), ownership_record_id=or3.ownership_id,
-        beneficial_owner_id=bo2.beneficial_owner_id,
-        allocation_percentage=Decimal("100.00"),
-        bank_account_name="Gateway Real Estate Holdings LLC",
-        bank_name="First Abu Dhabi Bank (FAB)",
-        iban="AE330350001020100369862",
-        effective_from=date(2021, 10, 12), is_current=True
-    )
-    ba4 = BeneficiaryAllocation(
-        allocation_id=gen_id(), ownership_record_id=or4.ownership_id,
-        beneficial_owner_id=bo3.beneficial_owner_id,
-        allocation_percentage=Decimal("100.00"),
-        bank_account_name="Fatima Khalid Al-Mansoori",
-        bank_name="Abu Dhabi Islamic Bank (ADIB)",
-        iban="AE920500000000203456781",
-        effective_from=date(2022, 2, 20), is_current=True
-    )
-    ba5 = BeneficiaryAllocation(
-        allocation_id=gen_id(), ownership_record_id=or5.ownership_id,
-        beneficial_owner_id=bo2.beneficial_owner_id,
-        allocation_percentage=Decimal("100.00"),
-        bank_account_name="Gateway Real Estate Holdings LLC",
-        bank_name="First Abu Dhabi Bank (FAB)",
-        iban="AE330350001020100369862",
-        effective_from=date(2018, 5, 15), is_current=True
-    )
-    db.add_all([ba1, ba2, ba3, ba4, ba5])
-    db.commit()
-
+    u1 = get_unit(p1.property_id)
+    u2 = get_unit(p2.property_id)
+    u4 = get_unit(p3.property_id)
+    u8 = get_unit(p4.property_id)
+    u9 = get_unit(p5.property_id)
     # ── 10. Tenants ──────────────────────────────────────────────────────────
 
     log("Seeding Tenants...")
@@ -725,6 +300,7 @@ def seed_dummy_data(db: Session):
 
     # ── 12. Payment Schedules ────────────────────────────────────────────────
 
+    today = date.today()
     log("Seeding Lease Payment Schedules...")
 
     # Lease 1 — 4 quarterly cheques (AED 30,000 each)

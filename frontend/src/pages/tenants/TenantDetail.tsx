@@ -15,6 +15,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import WarningIcon from '@mui/icons-material/Warning';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -30,6 +31,8 @@ interface TenantDetailData {
   id_number: string | null;
   id_type: string | null;
   id_expiry: string | null;
+  passport_number: string | null;
+  passport_expiry_date: string | null;
   nationality: string | null;
   email: string | null;
   phone: string | null;
@@ -95,12 +98,7 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/** Strip leading slash and build full URL to the uploads folder */
-function buildFileUrl(filePath: string): string {
-  const base = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
-  const clean = filePath.startsWith('/') ? filePath : `/${filePath}`;
-  return `${base}${clean}`;
-}
+import { getFileUrl } from '../../services/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -350,6 +348,8 @@ const TenantDetail: React.FC = () => {
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Type</Typography><Typography color="white" fontWeight={500}>{tenant.id_type || '—'}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Number</Typography><Typography color="white" fontWeight={500}>{tenant.id_number || '—'}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Expiry</Typography><Typography color="white" fontWeight={500}>{tenant.id_expiry ? new Date(tenant.id_expiry).toLocaleDateString() : '—'}</Typography></Grid>
+                  <Grid item xs={3}><Typography color="text.secondary" variant="body2">Passport Number</Typography><Typography color="white" fontWeight={500}>{tenant.passport_number || '—'}</Typography></Grid>
+                  <Grid item xs={3}><Typography color="text.secondary" variant="body2">Passport Expiry</Typography><Typography color="white" fontWeight={500}>{tenant.passport_expiry_date ? new Date(tenant.passport_expiry_date).toLocaleDateString() : '—'}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">Employer</Typography><Typography color="white" fontWeight={500}>{tenant.employer || '—'}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">Emergency Contact</Typography><Typography color="white" fontWeight={500}>{tenant.emergency_contact || '—'}</Typography></Grid>
                   <Grid item xs={12}><Typography color="text.secondary" variant="body2">Notes</Typography><Typography color="white" fontWeight={500}>{tenant.notes || '—'}</Typography></Grid>
@@ -488,7 +488,7 @@ const TenantDetail: React.FC = () => {
                             <Tooltip title="View / Download">
                               <IconButton
                                 size="small"
-                                onClick={() => window.open(buildFileUrl(doc.file_path), '_blank')}
+                                onClick={() => window.open(getFileUrl(doc.file_path), '_blank')}
                                 sx={{ color: '#6366f1', '&:hover': { bgcolor: 'rgba(99,102,241,0.12)' } }}
                                 aria-label={`view-${doc.document_id}`}
                               >

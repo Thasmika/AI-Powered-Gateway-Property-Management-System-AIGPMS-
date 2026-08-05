@@ -5,8 +5,10 @@ echo "Ensuring unzip is installed..."
 sudo apt-get install -y unzip
 
 echo "Extracting backend..."
+sudo cp /var/www/aigpms/backend/.env /tmp/.env.backup || true
 sudo rm -rf /var/www/aigpms/backend/*
 sudo unzip -o ~/backend.zip -d /var/www/aigpms/backend/ || true
+sudo cp /tmp/.env.backup /var/www/aigpms/backend/.env || true
 
 echo "Setting up permissions..."
 sudo chown -R ubuntu:ubuntu /var/www/aigpms/backend

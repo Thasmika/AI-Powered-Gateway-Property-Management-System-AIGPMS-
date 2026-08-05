@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Box, Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip
+  Box, Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -56,6 +58,15 @@ const OwnershipDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<OwnershipRecord | null>(null);
+  const [editPercentage, setEditPercentage] = useState<number | string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [editBeneficiaryDialogOpen, setEditBeneficiaryDialogOpen] = useState(false);
+  const [editingBeneficiary, setEditingBeneficiary] = useState<BeneficiaryAllocation | null>(null);
+  const [editBeneficiaryPercentage, setEditBeneficiaryPercentage] = useState<number | string>('');
+
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
 
   const fetchData = useCallback(async () => {
@@ -81,6 +92,98 @@ const OwnershipDetail: React.FC = () => {
   }, [id, authHeaders]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleDelete = async (ownershipId: string) => {
+    if (!window.confirm('Are you sure you want to delete this ownership record? This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API}/ownership/records/${ownershipId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to delete record');
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleEditOpen = (record: OwnershipRecord) => {
+    setEditingRecord(record);
+    setEditPercentage(record.ownership_percentage);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingRecord) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/ownership/records/${editingRecord.ownership_id}`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ ownership_percentage: Number(editPercentage) })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to update record');
+      }
+      setEditDialogOpen(false);
+      setEditingRecord(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBeneficiaryDelete = async (allocationId: string) => {
+    if (!window.confirm('Are you sure you want to delete this beneficiary allocation? This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API}/ownership/beneficiaries/${allocationId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to delete beneficiary allocation');
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleBeneficiaryEditOpen = (alloc: BeneficiaryAllocation) => {
+    setEditingBeneficiary(alloc);
+    setEditBeneficiaryPercentage(alloc.allocation_percentage);
+    setEditBeneficiaryDialogOpen(true);
+  };
+
+  const handleBeneficiaryEditSubmit = async () => {
+    if (!editingBeneficiary) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/ownership/beneficiaries/${editingBeneficiary.allocation_id}`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ allocation_percentage: Number(editBeneficiaryPercentage) })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to update beneficiary allocation');
+      }
+      setEditBeneficiaryDialogOpen(false);
+      setEditingBeneficiary(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error">{error}</Alert>;
@@ -126,7 +229,17 @@ const OwnershipDetail: React.FC = () => {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">Effective: {record.effective_from || 'N/A'}</Typography>
               </Box>
-              <Typography variant="h5" sx={{ color: '#10b981', fontWeight: 700 }}>{Number(record.ownership_percentage)}%</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="h5" sx={{ color: '#10b981', fontWeight: 700 }}>{Number(record.ownership_percentage)}%</Typography>
+                <Box>
+                  <IconButton size="small" onClick={() => handleEditOpen(record)} sx={{ color: 'text.secondary', '&:hover': { color: '#6366f1' } }}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => handleDelete(record.ownership_id)} sx={{ color: 'text.secondary', '&:hover': { color: '#ef4444' } }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Box>
             </Box>
 
             <Box sx={{ p: 3 }}>
@@ -145,6 +258,7 @@ const OwnershipDetail: React.FC = () => {
                         <TableCell>Share (%)</TableCell>
                         <TableCell>Bank Details</TableCell>
                         <TableCell>IBAN</TableCell>
+                        <TableCell align="center">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -162,6 +276,14 @@ const OwnershipDetail: React.FC = () => {
                             </Box>
                           </TableCell>
                           <TableCell sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>{alloc.iban || 'N/A'}</TableCell>
+                          <TableCell align="center">
+                            <IconButton size="small" onClick={() => handleBeneficiaryEditOpen(alloc)} sx={{ color: 'text.secondary', '&:hover': { color: '#6366f1' } }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleBeneficiaryDelete(alloc.allocation_id)} sx={{ color: 'text.secondary', '&:hover': { color: '#ef4444' } }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -172,6 +294,70 @@ const OwnershipDetail: React.FC = () => {
           </Paper>
         ))
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} PaperProps={{ sx: { bgcolor: '#1e1e2d', color: 'white' } }}>
+        <DialogTitle>Edit Ownership Percentage</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1, minWidth: 300 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Editing share for {editingRecord?.legal_owner?.full_name}
+            </Typography>
+            <TextField
+              fullWidth
+              label="Ownership Percentage (%)"
+              type="number"
+              value={editPercentage}
+              onChange={(e) => setEditPercentage(e.target.value)}
+              InputLabelProps={{ sx: { color: 'text.secondary' } }}
+              sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, color: 'white' } }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setEditDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button 
+            onClick={handleEditSubmit} 
+            variant="contained" 
+            disabled={isSubmitting}
+            sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
+          >
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Beneficiary Dialog */}
+      <Dialog open={editBeneficiaryDialogOpen} onClose={() => setEditBeneficiaryDialogOpen(false)} PaperProps={{ sx: { bgcolor: '#1e1e2d', color: 'white' } }}>
+        <DialogTitle>Edit Beneficiary Share</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1, minWidth: 300 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Editing share for {editingBeneficiary?.beneficial_owner?.full_name}
+            </Typography>
+            <TextField
+              fullWidth
+              label="Share Percentage (%)"
+              type="number"
+              value={editBeneficiaryPercentage}
+              onChange={(e) => setEditBeneficiaryPercentage(e.target.value)}
+              InputLabelProps={{ sx: { color: 'text.secondary' } }}
+              sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, color: 'white' } }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setEditBeneficiaryDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button 
+            onClick={handleBeneficiaryEditSubmit} 
+            variant="contained" 
+            disabled={isSubmitting}
+            sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
+          >
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -22,7 +22,9 @@ interface PropertyUnit {
   unit_id: string;
   unit_number: string;
   unit_type: string | null;
-  area_sqft: number | null;
+  area_sqm: number | null;
+  plot_number: string | null;
+  makani_number: string | null;
   status: string;
   floor_number?: string | null;
   balcony?: string | null;
@@ -31,6 +33,10 @@ interface PropertyUnit {
   photo_2?: string | null;
   photo_3?: string | null;
   photo_4?: string | null;
+  legal_owner_id?: string | null;
+  beneficial_owner_id?: string | null;
+  bank_id?: string | null;
+  tenant_id?: string | null;
 }
 
 interface PropertyDetail {
@@ -43,14 +49,14 @@ interface PropertyDetail {
   emirate: string | null;
   address_line_1: string | null;
   total_units: number | null;
-  total_area_sqft: number | null;
+  total_area_sqm: number | null;
   status: string;
   units: PropertyUnit[];
   main_photo?: string | null;
 }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-const BASE_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api/v1', '') : 'http://localhost:8000';
+import { getFileUrl } from '../../services/api';
 
 const PropertyDetail: React.FC = () => {
   const { propertyId } = useParams<{ propertyId: string }>();
@@ -71,6 +77,10 @@ const PropertyDetail: React.FC = () => {
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [viewUnitOpen, setViewUnitOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [tenancyHistoryOpen, setTenancyHistoryOpen] = useState(false);
+  const [unitLeases, setUnitLeases] = useState<any[]>([]);
+  const [leasesLoading, setLeasesLoading] = useState(false);
+  
   const [selectedUnit, setSelectedUnit] = useState<PropertyUnit | null>(null);
   const [unitData, setUnitData] = useState({
     unit_id: '',
@@ -78,7 +88,9 @@ const PropertyDetail: React.FC = () => {
     unit_type: 'Apartment',
     floor_number: '',
     balcony: 'Without Balcony',
-    area_sqft: '',
+    area_sqm: '',
+    plot_number: '',
+    makani_number: '',
     status: 'Vacant',
     unit_description: '',
     legal_owner_id: '',
@@ -216,7 +228,9 @@ const PropertyDetail: React.FC = () => {
         unit_type: unitData.unit_type,
         floor_number: unitData.floor_number || null,
         balcony: unitData.balcony || null,
-        area_sqft: unitData.area_sqft ? parseFloat(unitData.area_sqft) : null,
+        area_sqm: unitData.area_sqm ? parseFloat(unitData.area_sqm) : null,
+        plot_number: unitData.plot_number || null,
+        makani_number: unitData.makani_number || null,
         status: unitData.status,
         unit_description: unitData.unit_description || null,
         photo_1: unitData.photo_1 || null,
@@ -240,7 +254,7 @@ const PropertyDetail: React.FC = () => {
       });
       if (!res.ok) throw new Error(`Failed to ${isEdit ? 'update' : 'add'} unit`);
       setUnitModalOpen(false);
-      setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqft: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
+      setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
       fetchProperty();
     } catch (e: any) {
       alert(e.message);
@@ -260,6 +274,26 @@ const PropertyDetail: React.FC = () => {
       fetchProperty();
     } catch (e: any) {
       alert(e.message);
+    }
+  };
+
+  const handleOpenTenancyHistory = async () => {
+    if (!selectedUnit) return;
+    setTenancyHistoryOpen(true);
+    setLeasesLoading(true);
+    try {
+      const res = await fetch(`${API}/leases`, { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json();
+        // Filter leases by the selected unit
+        setUnitLeases(data.filter((l: any) => l.unit_id === selectedUnit.unit_id));
+      } else {
+        throw new Error('Failed to load leases');
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setLeasesLoading(false);
     }
   };
 
@@ -285,7 +319,7 @@ const PropertyDetail: React.FC = () => {
           onClick={() => fileInputRef.current?.click()}
         >
           <Avatar 
-            src={property.main_photo ? (property.main_photo.startsWith('http') ? property.main_photo : `${BASE_URL}${property.main_photo}`) : undefined}
+            src={property.main_photo ? getFileUrl(property.main_photo) : undefined}
             sx={{ bgcolor: '#6366f120', color: '#6366f1', width: 160, height: 160 }}
           >
             {!property.main_photo && <DomainIcon sx={{ fontSize: 80 }} />}
@@ -332,8 +366,8 @@ const PropertyDetail: React.FC = () => {
                 <Typography variant="body2" sx={{ color: 'white' }}>{property.total_units || '—'}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary">Total Area (SqFt)</Typography>
-                <Typography variant="body2" sx={{ color: 'white' }}>{property.total_area_sqft || '—'}</Typography>
+                <Typography variant="caption" color="text.secondary">Total Area (SqM)</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{property.total_area_sqm || '—'}</Typography>
               </Box>
             </Box>
           </Paper>
@@ -344,7 +378,7 @@ const PropertyDetail: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ color: 'white' }}>Units</Typography>
               <Button size="small" variant="outlined" onClick={() => {
-                setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqft: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
+                setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
                 setUnitModalOpen(true);
               }} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Add Unit</Button>
             </Box>
@@ -366,7 +400,7 @@ const PropertyDetail: React.FC = () => {
                     <TableRow key={unit.unit_id} sx={{ '& td': { borderColor: 'rgba(255,255,255,0.04)' } }}>
                       <TableCell sx={{ color: 'white' }}>{unit.unit_number}</TableCell>
                       <TableCell sx={{ color: 'text.secondary' }}>{unit.unit_type || '—'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{unit.area_sqft || '—'} sqft</TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{unit.area_sqm || '—'} sqm</TableCell>
                       <TableCell>
                          <Chip label={unit.status} size="small" sx={{ bgcolor: unit.status === 'Vacant' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)', color: unit.status === 'Vacant' ? '#f59e0b' : '#10b981', fontSize: '0.7rem' }} />
                       </TableCell>
@@ -381,7 +415,9 @@ const PropertyDetail: React.FC = () => {
                             unit_type: unit.unit_type || 'Apartment',
                             floor_number: unit.floor_number || '',
                             balcony: unit.balcony || 'Without Balcony',
-                            area_sqft: unit.area_sqft ? String(unit.area_sqft) : '',
+                            area_sqm: unit.area_sqm ? String(unit.area_sqm) : '',
+                            plot_number: unit.plot_number || '',
+                            makani_number: unit.makani_number || '',
                             status: unit.status,
                             unit_description: unit.unit_description || '',
                             legal_owner_id: unit.legal_owner_id || '',
@@ -449,13 +485,27 @@ const PropertyDetail: React.FC = () => {
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
             ))}
           </TextField>
-          <TextField 
-            label="Area (SqFt)" 
-            type="number"
-            value={unitData.area_sqft} 
-            onChange={(e) => setUnitData({...unitData, area_sqft: e.target.value})}
-            fullWidth
-          />
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField 
+              label="Area (SqM)" 
+              type="number"
+              value={unitData.area_sqm} 
+              onChange={(e) => setUnitData({...unitData, area_sqm: e.target.value})}
+              fullWidth
+            />
+            <TextField 
+              label="Plot Number" 
+              value={unitData.plot_number} 
+              onChange={(e) => setUnitData({...unitData, plot_number: e.target.value})}
+              fullWidth
+            />
+            <TextField 
+              label="Makani Number" 
+              value={unitData.makani_number} 
+              onChange={(e) => setUnitData({...unitData, makani_number: e.target.value})}
+              fullWidth
+            />
+          </Box>
           <TextField 
             select 
             label="Status" 
@@ -623,7 +673,7 @@ const PropertyDetail: React.FC = () => {
         <DialogActions sx={{ p: 2, pt: 0, justifyContent: 'space-between' }}>
           <Button onClick={() => {
             setUnitModalOpen(false);
-            setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqft: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
+            setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
           }} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button 
             variant="contained" 
@@ -657,8 +707,16 @@ const PropertyDetail: React.FC = () => {
               <Typography variant="body2">{selectedUnit?.balcony || '—'}</Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">Area (SqFt)</Typography>
-              <Typography variant="body2">{selectedUnit?.area_sqft || '—'}</Typography>
+              <Typography variant="caption" color="text.secondary">Area (SqM)</Typography>
+              <Typography variant="body2">{selectedUnit?.area_sqm || '—'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Plot Number</Typography>
+              <Typography variant="body2">{selectedUnit?.plot_number || '—'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Makani Number</Typography>
+              <Typography variant="body2">{selectedUnit?.makani_number || '—'}</Typography>
             </Box>
           </Box>
           <Box>
@@ -668,7 +726,7 @@ const PropertyDetail: React.FC = () => {
           <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
           <Grid container spacing={2}>
              {[selectedUnit?.photo_1, selectedUnit?.photo_2, selectedUnit?.photo_3, selectedUnit?.photo_4].map((photo, i) => {
-                const imageUrl = photo ? (photo.startsWith('http') ? photo : `${BASE_URL}${photo}`) : null;
+                const imageUrl = getFileUrl(photo);
                 return (
                   <Grid size={{ xs: 6, sm: 3 }} key={i}>
                     <Box sx={{ height: 100, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', border: '1px dashed rgba(255,255,255,0.2)', overflow: 'hidden' }}>
@@ -679,7 +737,7 @@ const PropertyDetail: React.FC = () => {
              })}
           </Grid>
           <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'center' }}>
-            <Button variant="outlined" size="small" onClick={() => navigate('/tenants-leases')} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Tenancy History</Button>
+            <Button variant="outlined" size="small" onClick={handleOpenTenancyHistory} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Tenancy History</Button>
             <Button variant="outlined" size="small" onClick={() => setGalleryOpen(true)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Photo Gallery</Button>
             <Button variant="outlined" size="small" onClick={() => navigate('/maintenance')} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Maintenance History</Button>
           </Box>
@@ -703,9 +761,58 @@ const PropertyDetail: React.FC = () => {
           open={galleryOpen}
           onClose={() => setGalleryOpen(false)}
           unitNumber={selectedUnit.unit_number}
-          photos={[selectedUnit.photo_1, selectedUnit.photo_2, selectedUnit.photo_3, selectedUnit.photo_4].map(p => p ? (p.startsWith('http') ? p : `${BASE_URL}${p}`) : '').filter(Boolean)}
+          photos={[selectedUnit.photo_1, selectedUnit.photo_2, selectedUnit.photo_3, selectedUnit.photo_4].map(p => getFileUrl(p)).filter(Boolean)}
         />
       )}
+
+      {/* Tenancy History Modal */}
+      <Dialog open={tenancyHistoryOpen} onClose={() => setTenancyHistoryOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { bgcolor: '#1e1e2d', color: 'white', borderRadius: 2 } }}>
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>Tenancy History - Unit {selectedUnit?.unit_number}</DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {leasesLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+          ) : unitLeases.length > 0 ? (
+            <Table>
+              <TableHead>
+                <TableRow sx={{ '& th': { borderColor: 'rgba(255,255,255,0.06)', color: 'text.secondary' } }}>
+                  <TableCell>Lease Number</TableCell>
+                  <TableCell>Tenant</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Versions</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {unitLeases.map((lease: any) => {
+                  const tenant = tenants.find(t => t.tenant_id === lease.tenant_id);
+                  return (
+                    <TableRow key={lease.lease_id} sx={{ '& td': { borderColor: 'rgba(255,255,255,0.04)' } }}>
+                      <TableCell sx={{ color: 'white' }}>{lease.lease_number}</TableCell>
+                      <TableCell sx={{ color: 'white' }}>
+                        {tenant ? `${tenant.full_name}${tenant.trade_name ? ` (${tenant.trade_name})` : ''}` : 'Unknown Tenant'}
+                      </TableCell>
+                      <TableCell>
+                         <Chip label={lease.status} size="small" sx={{ bgcolor: lease.status === 'Active' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)', color: lease.status === 'Active' ? '#10b981' : 'white', fontSize: '0.7rem' }} />
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{lease.versions?.length || 0}</TableCell>
+                      <TableCell align="right">
+                        <Button size="small" variant="outlined" onClick={() => navigate(`/tenants-leases/leases/${lease.lease_id}`)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>No tenancy history found for this unit.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setTenancyHistoryOpen(false)} sx={{ color: 'text.secondary' }}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

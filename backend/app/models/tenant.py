@@ -32,6 +32,8 @@ class Tenant(Base):
     id_number           = Column(String(100), nullable=True)    # Emirates ID / Passport
     id_type             = Column(String(50), nullable=True)     # Emirates ID, Passport, Trade License
     id_expiry           = Column(Date, nullable=True)
+    passport_number     = Column(String(100), nullable=True)
+    passport_expiry_date = Column(Date, nullable=True)
     nationality         = Column(String(100), nullable=True)
     email               = Column(String(150), nullable=True)
     phone               = Column(String(30), nullable=True)

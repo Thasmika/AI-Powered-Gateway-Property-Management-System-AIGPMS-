@@ -7,6 +7,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -126,6 +127,11 @@ const TitleDeedList: React.FC = () => {
                         <Tooltip title="View Details">
                           <IconButton size="small" onClick={() => navigate(`/title-deeds/${td.title_deed_id}`)} sx={{ color: '#6366f1' }}>
                             <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => navigate(`/title-deeds/${td.title_deed_id}/edit`)} sx={{ color: 'text.secondary', '&:hover': { color: '#6366f1' } }}>
+                            <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Delete">

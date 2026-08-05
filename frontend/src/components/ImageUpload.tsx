@@ -12,8 +12,7 @@ interface ImageUploadProps {
 }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-// Convert e.g. "http://localhost:8000/api/v1" to "http://localhost:8000" for serving uploads directly
-const BASE_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api/v1', '') : 'http://localhost:8000';
+import { getFileUrl } from '../services/api';
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSizeMB = 5 }) => {
   const { token } = useAuth();
@@ -72,7 +71,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSi
     setError(null);
   };
 
-  const imageUrl = value ? (value.startsWith('http') ? value : `${BASE_URL}${value}`) : null;
+  const imageUrl = getFileUrl(value);
 
   return (
     <Box sx={{ border: '1px dashed #ccc', borderRadius: 2, p: 2, textAlign: 'center', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>

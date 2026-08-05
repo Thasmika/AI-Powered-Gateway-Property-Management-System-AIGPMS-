@@ -39,7 +39,7 @@ class Property(Base):
     address_line_2    = Column(String(255), nullable=True)
     gps_location      = Column(String(100), nullable=True)   # "25.2048, 55.2708"
     total_units       = Column(Integer, nullable=True)
-    total_area_sqft   = Column(Numeric(12, 2), nullable=True)
+    total_area_sqm    = Column(Numeric(12, 2), nullable=True)
     status            = Column(String(30), default="Active")  # Active, Inactive, Under Construction
     main_photo        = Column(String(500), nullable=True)
     created_by        = Column(String(36), ForeignKey("users.user_id"), nullable=True)
@@ -64,7 +64,9 @@ class PropertyUnit(Base):
     unit_type      = Column(String(50), nullable=True)   # Studio, 1BR, 2BR, Room, Bed Space …
     floor_number   = Column(String(20), nullable=True)
     balcony        = Column(String(50), nullable=True)   # With Balcony / Without Balcony
-    area_sqft      = Column(Numeric(10, 2), nullable=True)
+    area_sqm       = Column(Numeric(10, 2), nullable=True)
+    plot_number    = Column(String(100), nullable=True)
+    makani_number  = Column(String(100), nullable=True)
     status         = Column(String(30), default="Vacant")  # Vacant, Occupied, Under Maintenance
     unit_description = Column(Text, nullable=True)
     photo_1        = Column(String(500), nullable=True)
@@ -99,6 +101,7 @@ class TitleDeed(Base):
     municipality_property_number = Column(String(100), nullable=True)
     plot_number                 = Column(String(100), nullable=True)
     unit_number                 = Column(String(50), nullable=True)
+    issue_date                  = Column(Date, nullable=True)
 
     # Ownership
     legal_owner_id              = Column(String(36), ForeignKey("legal_owners.legal_owner_id"), nullable=True)

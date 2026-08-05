@@ -12,7 +12,9 @@ class PropertyUnitBase(BaseModel):
     unit_type: Optional[str] = None
     floor_number: Optional[str] = None
     balcony: Optional[str] = None
-    area_sqft: Optional[Decimal] = None
+    area_sqm: Optional[Decimal] = None
+    plot_number: Optional[str] = None
+    makani_number: Optional[str] = None
     status: Optional[str] = "Vacant"
     unit_description: Optional[str] = None
     photo_1: Optional[str] = None
@@ -31,7 +33,9 @@ class PropertyUnitUpdate(BaseModel):
     unit_type: Optional[str] = None
     floor_number: Optional[str] = None
     balcony: Optional[str] = None
-    area_sqft: Optional[Decimal] = None
+    area_sqm: Optional[Decimal] = None
+    plot_number: Optional[str] = None
+    makani_number: Optional[str] = None
     status: Optional[str] = None
     unit_description: Optional[str] = None
     photo_1: Optional[str] = None
@@ -45,6 +49,10 @@ class PropertyUnitOut(PropertyUnitBase):
     property_id: str
     created_at: datetime
     title_deed: Optional['TitleDeedOut'] = None
+    legal_owner_id: Optional[str] = None
+    beneficial_owner_id: Optional[str] = None
+    bank_id: Optional[str] = None
+    tenant_id: Optional[str] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +150,7 @@ class TitleDeedBase(BaseModel):
     municipality_property_number: Optional[str] = None
     plot_number: Optional[str] = None
     unit_number: Optional[str] = None
+    issue_date: Optional[date] = None
     legal_owner_id: Optional[str] = None
     beneficial_owner_id: Optional[str] = None
     financier: Optional[str] = None
@@ -188,7 +197,7 @@ class PropertyBase(BaseModel):
     address_line_2: Optional[str] = None
     gps_location: Optional[str] = None
     total_units: Optional[int] = None
-    total_area_sqft: Optional[Decimal] = None
+    total_area_sqm: Optional[Decimal] = None
     status: Optional[str] = "Active"
     main_photo: Optional[str] = None
 
@@ -206,7 +215,7 @@ class PropertyUpdate(BaseModel):
     address_line_2: Optional[str] = None
     gps_location: Optional[str] = None
     total_units: Optional[int] = None
-    total_area_sqft: Optional[Decimal] = None
+    total_area_sqm: Optional[Decimal] = None
     status: Optional[str] = None
     main_photo: Optional[str] = None
 
