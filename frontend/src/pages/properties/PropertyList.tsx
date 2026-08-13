@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Chip, CircularProgress, Avatar, Alert,
@@ -24,7 +24,7 @@ interface PropertyUnit {
   unit_id: string;
   unit_number: string;
   status: string;
-  area_sqft: number | null;
+  area_sqm: number | null;
   unit_type: string | null;
 }
 
@@ -36,7 +36,7 @@ interface Property {
   community: string | null;
   emirate: string | null;
   status: string;
-  total_area_sqft: number | null;
+  total_area_sqm: number | null;
   units?: PropertyUnit[];
 }
 
@@ -49,7 +49,7 @@ interface Summary {
   vacantUnits: number;
   maintenanceUnits: number;
   occupancyRate: number;
-  totalAreaSqft: number;
+  totalAreaSqm: number;
   byType: Record<string, number>;
   lastUpdated: Date;
 }
@@ -174,7 +174,7 @@ const PropertyList: React.FC = () => {
     const vacant    = allUnits.filter((u) => u.status === "Vacant").length;
     const maint     = allUnits.filter((u) => u.status === "Maintenance").length;
     const totalU    = allUnits.length;
-    const totalArea = detailedProperties.reduce((acc, p) => acc + (Number(p.total_area_sqft) || 0), 0);
+    const totalArea = detailedProperties.reduce((acc, p) => acc + (Number(p.total_area_sqm) || 0), 0);
     const byType: Record<string, number> = {};
     detailedProperties.forEach((p) => {
       const t = p.property_type || "Other";
@@ -186,7 +186,7 @@ const PropertyList: React.FC = () => {
       underConstruction: detailedProperties.filter((p) => p.status === "Under Construction").length,
       totalUnits: totalU, occupiedUnits: occupied, vacantUnits: vacant, maintenanceUnits: maint,
       occupancyRate: totalU > 0 ? Math.round((occupied / totalU) * 100) : 0,
-      totalAreaSqft: totalArea, byType, lastUpdated: lastRefresh,
+      totalAreaSqm: totalArea, byType, lastUpdated: lastRefresh,
     };
   }, [detailedProperties, lastRefresh]);
 
@@ -208,10 +208,12 @@ const PropertyList: React.FC = () => {
     }
   };
 
-  const fmtArea = (n: number) =>
-    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M sqft`
-    : n >= 1_000   ? `${(n / 1_000).toFixed(1)}K sqft`
-    : `${n} sqft`;
+  const fmtArea = (n: number) => {
+    if (!n) return '0 sqm';
+    return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M sqm`
+    : n >= 1_000   ? `${(n / 1_000).toFixed(1)}K sqm`
+    : `${n} sqm`;
+  };
 
   return (
     <Box>
@@ -274,7 +276,7 @@ const PropertyList: React.FC = () => {
               color="#f59e0b" subLabel="properties" loading={summaryLoading} />
           </Grid>
           <Grid xs={6} sm={3}>
-            <StatCard label="Total Area" value={summary.totalAreaSqft > 0 ? fmtArea(summary.totalAreaSqft) : "—"}
+            <StatCard label="Total Area" value={summary.totalAreaSqm > 0 ? fmtArea(summary.totalAreaSqm) : "—"}
               icon={<SquareFootIcon fontSize="small" />} color="#8b5cf6" subLabel="combined portfolio" loading={summaryLoading} />
           </Grid>
         </Grid>

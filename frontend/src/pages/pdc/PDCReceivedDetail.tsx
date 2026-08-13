@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const PDCReceivedDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -158,8 +160,12 @@ const PDCReceivedDetail: React.FC = () => {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Return Date</label>
-                  <input type="date" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                    onChange={e => setActionData({...actionData, return_date: e.target.value})} />
+                  <DatePicker 
+                    format="DD/MM/YYYY"
+                    value={actionData.return_date ? dayjs(actionData.return_date) : null}
+                    onChange={(newValue) => setActionData({...actionData, return_date: newValue ? newValue.format('YYYY-MM-DD') : ''})}
+                    slotProps={{ textField: { required: true, size: 'small', className: "mt-1 w-full bg-white text-black" } }}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Return Reason</label>
@@ -195,8 +201,12 @@ const PDCReceivedDetail: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Cheque Date</label>
-                    <input type="date" required className="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                      onChange={e => setActionData({...actionData, cheque_date: e.target.value})} />
+                    <DatePicker 
+                      format="DD/MM/YYYY"
+                      value={actionData.cheque_date ? dayjs(actionData.cheque_date) : null}
+                      onChange={(newValue) => setActionData({...actionData, cheque_date: newValue ? newValue.format('YYYY-MM-DD') : ''})}
+                      slotProps={{ textField: { required: true, size: 'small', className: "mt-1 w-full bg-white text-black" } }}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Amount</label>

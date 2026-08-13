@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar, Autocomplete
+  Box, Typography, Paper, TextField, Button, Grid, MenuItem, Alert, CircularProgress, Divider, Avatar, Autocomplete, IconButton
 } from '@mui/material';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
+import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import QuickEntityModal from '../../components/QuickEntityModal';
+import type { QuickEntityModalProps } from '../../components/QuickEntityModal';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -23,7 +26,7 @@ const PropertyEntry: React.FC = () => {
     address_line_1: '',
     address_line_2: '',
     total_units: '',
-    total_area_sqft: '',
+    total_area_sqm: '',
     status: 'Active'
   });
   
@@ -31,21 +34,28 @@ const PropertyEntry: React.FC = () => {
   const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
   const [propertyTypes, setPropertyTypes] = useState<any[]>([]);
+  const [quickAction, setQuickAction] = useState<{
+    open: boolean;
+    type: QuickEntityModalProps['type'];
+    mode: 'add' | 'edit';
+    data?: any;
+  }>({ open: false, type: 'property_type', mode: 'add' });
+
+  const fetchPropertyTypes = async () => {
+    try {
+      const res = await fetch(`${API}/master/property-types`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPropertyTypes(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch property types", e);
+    }
+  };
 
   useEffect(() => {
-    const fetchPropertyTypes = async () => {
-      try {
-        const res = await fetch(`${API}/master/property-types`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setPropertyTypes(data);
-        }
-      } catch (e) {
-        console.error("Failed to fetch property types", e);
-      }
-    };
     fetchPropertyTypes();
 
     if (isEditMode) {
@@ -66,7 +76,7 @@ const PropertyEntry: React.FC = () => {
             address_line_1: data.address_line_1 || '',
             address_line_2: data.address_line_2 || '',
             total_units: data.total_units?.toString() || '',
-            total_area_sqft: data.total_area_sqft?.toString() || '',
+            total_area_sqm: data.total_area_sqm?.toString() || '',
             status: data.status || 'Active'
           });
         } catch (e: any) {
@@ -96,7 +106,7 @@ const PropertyEntry: React.FC = () => {
       const payload = {
         ...formData,
         total_units: formData.total_units ? parseInt(formData.total_units) : null,
-        total_area_sqft: formData.total_area_sqft ? parseFloat(formData.total_area_sqft) : null
+        total_area_sqm: formData.total_area_sqm ? parseFloat(formData.total_area_sqm) : null
       };
 
       const url = isEditMode ? `${API}/properties/${propertyId}` : `${API}/properties`;
@@ -152,14 +162,20 @@ const PropertyEntry: React.FC = () => {
               <TextField name="property_name" label="Property Name *" value={formData.property_name} onChange={handleChange} fullWidth />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete
-                freeSolo
-                options={propertyTypes.map((pt) => pt.type_name)}
-                value={formData.property_type}
-                onChange={(_, newValue) => setFormData({ ...formData, property_type: newValue || '' })}
-                onInputChange={(_, newInputValue) => setFormData({ ...formData, property_type: newInputValue })}
-                renderInput={(params) => <TextField {...params} label="Property Type" fullWidth />}
-              />
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Autocomplete
+                  freeSolo
+                  options={propertyTypes.map((pt) => pt.type_name)}
+                  value={formData.property_type}
+                  onChange={(_, newValue) => setFormData({ ...formData, property_type: newValue || '' })}
+                  onInputChange={(_, newInputValue) => setFormData({ ...formData, property_type: newInputValue })}
+                  renderInput={(params) => <TextField {...params} label="Property Type" fullWidth />}
+                  sx={{ flexGrow: 1 }}
+                />
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setQuickAction({ open: true, type: 'property_type', mode: 'add' })} sx={{ height: 56, borderColor: 'rgba(255,255,255,0.2)', color: 'white', whiteSpace: 'nowrap' }}>
+                  New
+                </Button>
+              </Box>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField name="status" label="Status" value={formData.status} onChange={handleChange} fullWidth select>
@@ -203,10 +219,10 @@ const PropertyEntry: React.FC = () => {
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField 
-                name="total_area_sqft" 
-                label="Total Area (SqFt) (Optional)" 
+                name="total_area_sqm" 
+                label="Total Area (SQM) (Optional)" 
                 type="number" 
-                value={formData.total_area_sqft} 
+                value={formData.total_area_sqm} 
                 onChange={handleChange} 
                 fullWidth 
                 disabled={isEditMode}
@@ -225,6 +241,21 @@ const PropertyEntry: React.FC = () => {
           </Grid>
         </form>
       </Paper>
+
+      <QuickEntityModal
+        open={quickAction.open}
+        type={quickAction.type}
+        mode={quickAction.mode}
+        initialData={quickAction.data}
+        onClose={() => setQuickAction({ ...quickAction, open: false })}
+        onSuccess={(type, savedData) => {
+          fetchPropertyTypes();
+          setQuickAction(prev => ({ ...prev, open: false }));
+          if (type === 'property_type') {
+            setFormData(prev => ({ ...prev, property_type: savedData.type_name }));
+          }
+        }}
+      />
     </Box>
   );
 };

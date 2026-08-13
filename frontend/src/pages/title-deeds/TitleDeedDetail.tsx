@@ -6,6 +6,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getFileUrl } from '../../services/api';
 
 interface PropertyAcquisitionCost {
   acquisition_id: string;
@@ -30,8 +31,23 @@ interface TitleDeedDetail {
   mortgage_bank: string | null;
   outstanding_loan: number | null;
   loan_to_value_ratio: number | null;
+  loan_to_value_ratio: number | null;
   acquisition_costs: PropertyAcquisitionCost | null;
   attachment_path?: string | null;
+  municipality_property_number?: string | null;
+  plot_number?: string | null;
+  issue_date?: string | null;
+  property_type?: string | null;
+  unit_size?: number | null;
+  unit_size_measure?: string | null;
+  floor_number?: string | null;
+  unit_number?: string | null;
+  building_number?: string | null;
+  building_name?: string | null;
+  community?: string | null;
+  emirate?: string | null;
+  purchased_from?: string | null;
+  notes?: string | null;
 }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -120,7 +136,7 @@ const TitleDeedDetail: React.FC = () => {
             <input type="file" hidden onChange={handleFileUpload} />
           </Button>
           {titleDeed.attachment_path && (
-            <Button variant="contained" onClick={() => window.open(`${API.replace('/api/v1', '')}${titleDeed.attachment_path}`, '_blank')}>
+            <Button variant="contained" onClick={() => window.open(getFileUrl(titleDeed.attachment_path), '_blank')}>
               Review File
             </Button>
           )}
@@ -164,6 +180,33 @@ const TitleDeedDetail: React.FC = () => {
               </Box>
             </Box>
           </Paper>
+          
+          <Paper elevation={0} sx={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 2, p: 3, mt: 3 }}>
+            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>Title Deed Info</Typography>
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Municipality Property No.</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.municipality_property_number || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Plot No.</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.plot_number || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Issue Date</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.issue_date || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Purchased From (Seller)</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.purchased_from || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" color="text.secondary">Notes & Conditions</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.notes || '—'}</Typography>
+              </Grid>
+            </Grid>
+          </Paper>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
@@ -201,6 +244,45 @@ const TitleDeedDetail: React.FC = () => {
             ) : (
               <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>No acquisition costs recorded.</Typography>
             )}
+          </Paper>
+          
+          <Paper elevation={0} sx={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 2, p: 3, mt: 3 }}>
+            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>Property Details</Typography>
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Property Type</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.property_type || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Unit Size</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.unit_size ? `${titleDeed.unit_size} ${titleDeed.unit_size_measure || 'Sq.M'}` : '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Floor No.</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.floor_number || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Unit No.</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.unit_number || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Building No.</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.building_number || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Building Name</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.building_name || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Community</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.community || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">Emirate</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.emirate || '—'}</Typography>
+              </Grid>
+            </Grid>
           </Paper>
         </Grid>
       </Grid>

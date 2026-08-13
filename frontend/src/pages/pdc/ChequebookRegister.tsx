@@ -8,6 +8,8 @@ import {
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../../context/AuthContext';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -161,12 +163,17 @@ const ChequebookRegister: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField 
-                fullWidth type="date" label="Received Date" 
-                value={formData.received_date}
-                onChange={(e) => setFormData({ ...formData, received_date: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                sx={{ '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+              <DatePicker 
+                label="Received Date" 
+                format="DD/MM/YYYY"
+                value={formData.received_date ? dayjs(formData.received_date) : null}
+                onChange={(newValue) => setFormData({ ...formData, received_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    sx: { '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={12} md={6}>

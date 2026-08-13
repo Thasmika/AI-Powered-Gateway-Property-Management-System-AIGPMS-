@@ -23,8 +23,8 @@ def list_tenants(
     limit: int = 100,
     current_user = Depends(deps.get_current_user)
 ):
-    """List all tenants."""
-    tenants = db.query(Tenant).offset(skip).limit(limit).all()
+    \"\"\"List all tenants.\"\"\"
+    tenants = db.query(Tenant).order_by(Tenant.full_name.asc(), Tenant.trade_name.asc()).offset(skip).limit(limit).all()
     return tenants
 
 

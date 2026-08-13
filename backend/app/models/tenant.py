@@ -80,7 +80,9 @@ class Lease(Base):
     property_id         = Column(String(36), ForeignKey("properties.property_id"), nullable=False)
     unit_id             = Column(String(36), ForeignKey("property_units.unit_id"), nullable=False)
     tenant_id           = Column(String(36), ForeignKey("tenants.tenant_id"), nullable=False)
+    legal_owner_id      = Column(String(36), ForeignKey("legal_owners.legal_owner_id"), nullable=True)
     lease_type          = Column(String(50), nullable=True)    # Residential, Commercial, Labour Camp
+    lease_date          = Column(Date, nullable=True)
     status              = Column(String(30), default="Active") # Active, Expired, Terminated, Renewed
     created_by          = Column(String(36), ForeignKey("users.user_id"), nullable=True)
     created_at          = Column(DateTime, default=datetime.utcnow)
@@ -88,9 +90,22 @@ class Lease(Base):
 
     tenant              = relationship("Tenant", back_populates="leases")
     unit                = relationship("PropertyUnit", back_populates="leases")
+    property_link       = relationship("Property")
     versions            = relationship("LeaseVersion", back_populates="lease", order_by="LeaseVersion.version_number")
     receipts            = relationship("RentalReceipt", back_populates="lease")
     pdc_received        = relationship("PDCReceived", back_populates="lease")
+
+    @property
+    def tenant_name(self):
+        return self.tenant.full_name if self.tenant else None
+
+    @property
+    def property_name(self):
+        return self.property_link.property_name if self.property_link else None
+
+    @property
+    def unit_number(self):
+        return self.unit.unit_number if self.unit else None
 
 
 class LeaseVersion(Base):
@@ -107,7 +122,8 @@ class LeaseVersion(Base):
     # Contract Terms
     contract_start_date     = Column(Date, nullable=False)
     contract_end_date       = Column(Date, nullable=False)
-    annual_rent             = Column(Numeric(12, 2), nullable=False)
+    contract_value          = Column(Numeric(15, 2), nullable=True)
+    annual_rent             = Column(Numeric(15, 2), nullable=False)
     currency                = Column(String(10), default="AED")
     payment_frequency       = Column(String(30), nullable=True)   # Monthly, Quarterly, Semi-Annual, Annual
     number_of_cheques       = Column(Integer, nullable=True)      # Typically 4 or 5
@@ -115,6 +131,7 @@ class LeaseVersion(Base):
     agent_commission        = Column(Numeric(12, 2), default=0)
     municipality_fee        = Column(Numeric(12, 2), default=0)
     ejari_number            = Column(String(100), nullable=True)  # Ejari registration reference
+    premises_no             = Column(String(100), nullable=True)  # Premises No
     contract_reference      = Column(String(100), nullable=True)
 
     # Version Control

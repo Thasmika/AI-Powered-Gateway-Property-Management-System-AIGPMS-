@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, Chip, Table, TableBody, TableCell,
@@ -6,6 +7,7 @@ import {
   InputAdornment, MenuItem, Select, FormControl, InputLabel,
   IconButton, Tooltip, LinearProgress, Stack, Card, CardContent,
   Avatar, Badge,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -37,6 +39,50 @@ const PDCReceivedRegister: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedPdc, setSelectedPdc] = useState<any>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleEditOpen = (pdc: any) => {
+    setSelectedPdc(pdc);
+    setEditForm(pdc);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteOpen = (pdc: any) => {
+    setSelectedPdc(pdc);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    setActionLoading(true);
+    try {
+      await api.put(`/pdc-received/${selectedPdc.pdc_received_id}`, editForm);
+      setEditDialogOpen(false);
+      fetchPdcs();
+    } catch (error) {
+      console.error('Failed to update PDC', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setActionLoading(true);
+    try {
+      await api.delete(`/pdc-received/${selectedPdc.pdc_received_id}`);
+      setDeleteDialogOpen(false);
+      fetchPdcs();
+    } catch (error) {
+      console.error('Failed to delete PDC', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   const fetchPdcs = async () => {
     setLoading(true);
@@ -282,7 +328,32 @@ const PDCReceivedRegister: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <Tooltip title="View PDC Detail">
+                    
+                      <Tooltip title="Edit PDC">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditOpen(pdc);
+                          }}
+                          sx={{ color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete PDC">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOpen(pdc);
+                          }}
+                          sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.15)' } }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+<Tooltip title="View PDC Detail">
                       <IconButton
                         size="small"
                         onClick={(e) => {
@@ -326,7 +397,42 @@ const PDCReceivedRegister: React.FC = () => {
           </Typography>
         </Stack>
       )}
-    </Box>
+    
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} PaperProps={{ sx: { background: '#1e1e1e', color: 'white', minWidth: 400 } }}>
+        <DialogTitle>Edit PDC</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth label="Cheque Number" margin="normal"
+            value={editForm.cheque_number || ''}
+            onChange={(e) => setEditForm({ ...editForm, cheque_number: e.target.value })}
+            sx={{ '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+          />
+          <TextField
+            fullWidth label="Amount" margin="normal" type="number"
+            value={editForm.cheque_amount || ''}
+            onChange={(e) => setEditForm({ ...editForm, cheque_amount: e.target.value })}
+            sx={{ '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleEditSave} variant="contained" disabled={actionLoading}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { background: '#1e1e1e', color: 'white' } }}>
+        <DialogTitle>Delete PDC</DialogTitle>
+        <DialogContent>
+          <Typography sx={{mt:2}}>Are you sure you want to delete PDC {selectedPdc?.cheque_number}? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} variant="contained" color="error" disabled={actionLoading}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+</Box>
   );
 };
 

@@ -43,6 +43,7 @@ import LeaseList from './pages/leases/LeaseList';
 import ReceiptList from './pages/pdc/ReceiptList';
 import ReceiptVoucherEntry from './pages/pdc/ReceiptVoucherEntry';
 import ReceiptDetail from './pages/pdc/ReceiptDetail';
+import AIChat from './pages/AIChat';
 import PDCReceivedRegister from './pages/pdc/PDCReceivedRegister';
 import PDCReceivedDetail from './pages/pdc/PDCReceivedDetail';
 
@@ -65,12 +66,16 @@ const ModulePlaceholder: React.FC<{ name: string }> = ({ name }) => {
 };
 
 
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+
 const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <CssBaseline />
+        <AuthProvider>
+          <Router>
           <Routes>
             {/* Public Login Route */}
             <Route path="/login" element={<Login />} />
@@ -382,7 +387,7 @@ const App: React.FC = () => {
                 path="ai-assistant"
                 element={
                   <ProtectedRoute>
-                    <ModulePlaceholder name="AI Chatbot & Assistant" />
+                    <AIChat />
                   </ProtectedRoute>
                 }
               />
@@ -435,6 +440,7 @@ const App: React.FC = () => {
           </Routes>
         </Router>
       </AuthProvider>
+      </LocalizationProvider>
     </ThemeProvider>
   );
 };

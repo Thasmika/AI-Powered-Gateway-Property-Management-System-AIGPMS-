@@ -76,8 +76,8 @@ const MainLayout: React.FC = () => {
       { text: 'Investment Dashboard',   icon: <ShowChartIcon />,            path: '/investment-dashboard', roles: ['Managing Director', 'Administrator'] },
       { text: 'Ownership',              icon: <GavelIcon />,                path: '/ownership',     roles: ['Managing Director', 'Accountant', 'Administrator'] },
       // ── Tenancy ──────────────────────────────────────────────────────────
-      { text: 'Tenants & Leases',       icon: <PeopleIcon />,               path: '/tenants-leases', roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
-      { text: 'Tenants Contract',       icon: <ArticleIcon />,              path: '/tenants-leases/leases',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Tenants Registry',       icon: <PeopleIcon />,               path: '/tenants-leases', roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Tenancy Contracts',      icon: <ArticleIcon />,              path: '/tenants-leases/leases',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
       { text: 'Rental Collection',      icon: <ReceiptIcon />,              path: '/pdc/receipts',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
       // ── PDC ──────────────────────────────────────────────────────────────
       { text: 'PDC Received',           icon: <MoneyOffIcon />,             path: '/pdc/register',  roles: ['Managing Director', 'Accountant', 'Administrator'] },

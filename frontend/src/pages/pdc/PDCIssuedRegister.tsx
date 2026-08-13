@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Chip, CircularProgress, Avatar, Alert,
@@ -11,6 +12,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -21,6 +24,50 @@ const PDCIssuedRegister: React.FC = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedPdc, setSelectedPdc] = useState<any>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleEditOpen = (pdc: any) => {
+    setSelectedPdc(pdc);
+    setEditForm(pdc);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteOpen = (pdc: any) => {
+    setSelectedPdc(pdc);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    setActionLoading(true);
+    try {
+      await api.put(`/pdc-issued/${selectedPdc.pdc_issued_id}`, editForm);
+      setEditDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Failed to update PDC', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setActionLoading(true);
+    try {
+      await api.delete(`/pdc-issued/${selectedPdc.pdc_issued_id}`);
+      setDeleteDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Failed to delete PDC', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -145,7 +192,32 @@ const PDCIssuedRegister: React.FC = () => {
                       <Chip label={pdc.status} color={getStatusColor(pdc.status) as any} size="small" />
                     </TableCell>
                     <TableCell align="center">
-                      <Tooltip title="View Detail">
+                      
+                      <Tooltip title="Edit PDC">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditOpen(pdc);
+                          }}
+                          sx={{ color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete PDC">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOpen(pdc);
+                          }}
+                          sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.15)' } }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+<Tooltip title="View Detail">
                         <IconButton size="small" onClick={() => navigate(`/pdc-issued/${pdc.pdc_issued_id}`)} sx={{ color: '#ec4899' }}>
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
@@ -206,12 +278,17 @@ const PDCIssuedRegister: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField 
-                fullWidth type="date" label="Cheque Date" 
-                value={formData.cheque_date}
-                onChange={(e) => setFormData({ ...formData, cheque_date: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                sx={{ '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+              <DatePicker 
+                label="Cheque Date" 
+                format="DD/MM/YYYY"
+                value={formData.cheque_date ? dayjs(formData.cheque_date) : null}
+                onChange={(newValue) => setFormData({ ...formData, cheque_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    sx: { '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -239,7 +316,42 @@ const PDCIssuedRegister: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} PaperProps={{ sx: { background: '#1e1e1e', color: 'white', minWidth: 400 } }}>
+        <DialogTitle>Edit PDC</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth label="Cheque Number" margin="normal"
+            value={editForm.cheque_number || ''}
+            onChange={(e) => setEditForm({ ...editForm, cheque_number: e.target.value })}
+            sx={{ '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+          />
+          <TextField
+            fullWidth label="Amount" margin="normal" type="number"
+            value={editForm.cheque_amount || ''}
+            onChange={(e) => setEditForm({ ...editForm, cheque_amount: e.target.value })}
+            sx={{ '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleEditSave} variant="contained" disabled={actionLoading}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { background: '#1e1e1e', color: 'white' } }}>
+        <DialogTitle>Delete PDC</DialogTitle>
+        <DialogContent>
+          <Typography sx={{mt:2}}>Are you sure you want to delete PDC {selectedPdc?.cheque_number}? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} variant="contained" color="error" disabled={actionLoading}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+</Box>
   );
 };
 

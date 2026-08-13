@@ -148,14 +148,25 @@ class PropertyAcquisitionCostOut(PropertyAcquisitionCostBase):
 class TitleDeedBase(BaseModel):
     title_deed_number: Optional[str] = None
     municipality_property_number: Optional[str] = None
+    property_id: Optional[str] = None
+    unit_id: Optional[str] = None
     plot_number: Optional[str] = None
     unit_number: Optional[str] = None
+    property_type: Optional[str] = None
+    unit_size: Optional[Decimal] = None
+    unit_size_measure: Optional[str] = None
+    floor_number: Optional[str] = None
+    building_number: Optional[str] = None
+    building_name: Optional[str] = None
+    community: Optional[str] = None
+    emirate: Optional[str] = None
     issue_date: Optional[date] = None
     legal_owner_id: Optional[str] = None
     beneficial_owner_id: Optional[str] = None
     financier: Optional[str] = None
     ownership_percentage: Optional[Decimal] = None
     purchase_method: Optional[str] = None
+    purchased_from: Optional[str] = None
     ownership_status: Optional[str] = "Active"
     loan_number: Optional[str] = None
     mortgage_status: Optional[str] = None
@@ -163,6 +174,7 @@ class TitleDeedBase(BaseModel):
     outstanding_loan: Optional[Decimal] = None
     loan_to_value_ratio: Optional[Decimal] = None
     mortgage_expiry_date: Optional[date] = None
+    notes: Optional[str] = None
     attachment_path: Optional[str] = None
 
 class TitleDeedCreate(TitleDeedBase):
@@ -177,6 +189,8 @@ class TitleDeedOut(TitleDeedBase):
     unit_id: str
     created_at: datetime
     updated_at: datetime
+    legal_owner: Optional[str] = None
+    beneficial_owner: Optional[str] = None
     
     # Nested representation if preloaded
     acquisition_costs: Optional[PropertyAcquisitionCostOut] = None
@@ -225,6 +239,7 @@ class PropertyOut(PropertyBase):
     created_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    units: List[PropertyUnitOut] = []
 
 class PropertyDetailOut(PropertyOut):
     """Includes nested units, documents, etc. for full detail view."""

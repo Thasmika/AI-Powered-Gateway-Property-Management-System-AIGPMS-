@@ -6,7 +6,10 @@ export const getFileUrl = (filePath: string | null | undefined): string => {
   if (!filePath) return '';
   if (filePath.startsWith('http')) return filePath;
   const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
-  const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  let cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  if (!cleanPath.startsWith('/uploads')) {
+    cleanPath = `/uploads${cleanPath}`;
+  }
   return `${base}${cleanPath}`;
 };
 

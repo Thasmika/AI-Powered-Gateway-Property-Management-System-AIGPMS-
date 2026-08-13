@@ -7,6 +7,8 @@ import AddIcon from '@mui/icons-material/Add';
 import PeopleIcon from '@mui/icons-material/People';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -26,6 +28,8 @@ const TenantList: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
 
   const fetchTenants = useCallback(async () => {
     setLoading(true);
@@ -48,6 +52,24 @@ const TenantList: React.FC = () => {
       case 'Inactive': return { bg: 'rgba(100,116,139,0.15)', text: '#64748b' };
       case 'Blacklisted': return { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' };
       default: return { bg: 'rgba(255,255,255,0.1)', text: 'white' };
+    }
+  };
+
+  const handleDeleteClick = (tenant: Tenant) => {
+    setTenantToDelete(tenant);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!tenantToDelete) return;
+    try {
+      await api.delete(`/tenants/${tenantToDelete.tenant_id}`);
+      setTenants(tenants.filter(t => t.tenant_id !== tenantToDelete.tenant_id));
+      setDeleteDialogOpen(false);
+      setTenantToDelete(null);
+    } catch (e: any) {
+      setError(e.response?.data?.detail || e.message || 'Failed to delete tenant');
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -118,6 +140,11 @@ const TenantList: React.FC = () => {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => handleDeleteClick(tenant)} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.1)' } }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   )
@@ -127,6 +154,35 @@ const TenantList: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        PaperProps={{
+          style: {
+            backgroundColor: '#1e1e2f',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }
+        }}
+      >
+        <DialogTitle>Delete Tenant</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            Are you sure you want to delete the tenant <strong>{tenantToDelete?.full_name}</strong>?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

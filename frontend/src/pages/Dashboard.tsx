@@ -30,29 +30,29 @@ const Dashboard: React.FC = () => {
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2 relative overflow-hidden">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Total Properties</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">150</Typography>
-                <div className="text-emerald-400 text-xs flex items-center gap-1"><TrendingUpIcon sx={{ fontSize: 14 }} /> +2.5% vs last month</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs flex items-center gap-1"><TrendingUpIcon sx={{ fontSize: 14 }} /> 0% vs last month</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Occupancy Rate</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">92%</Typography>
-                <div className="text-slate-400 text-xs">138 Occupied / 12 Vacant</div>
+                <Typography variant="h3" className="font-extrabold text-white">0%</Typography>
+                <div className="text-slate-400 text-xs">0 Occupied / 0 Vacant</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Monthly Rent Income</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">AED 450K</Typography>
-                <div className="text-emerald-400 text-xs flex items-center gap-1"><TrendingUpIcon sx={{ fontSize: 14 }} /> +8.0% vs target</div>
+                <Typography variant="h3" className="font-extrabold text-white">AED 0</Typography>
+                <div className="text-slate-400 text-xs flex items-center gap-1"><TrendingUpIcon sx={{ fontSize: 14 }} /> 0% vs target</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Outstanding Rent</Typography>
-                <Typography variant="h3" className="font-extrabold text-red-400">AED 50K</Typography>
-                <div className="text-red-400 text-xs">3 Tenants Overdue</div>
+                <Typography variant="h3" className="font-extrabold text-white">AED 0</Typography>
+                <div className="text-slate-400 text-xs">0 Tenants Overdue</div>
               </Card>
             </div>
           </>
@@ -63,29 +63,29 @@ const Dashboard: React.FC = () => {
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Rent Collected</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">AED 400K</Typography>
-                <div className="text-emerald-400 text-xs">90% of total expected</div>
+                <Typography variant="h3" className="font-extrabold text-white">AED 0</Typography>
+                <div className="text-slate-400 text-xs">0% of total expected</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Pending Allocations</Typography>
-                <Typography variant="h3" className="font-extrabold text-yellow-400">AED 15K</Typography>
-                <div className="text-slate-400 text-xs">2 Receipts awaiting allocation</div>
+                <Typography variant="h3" className="font-extrabold text-white">AED 0</Typography>
+                <div className="text-slate-400 text-xs">0 Receipts awaiting allocation</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Open Payment Vouchers</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">8</Typography>
-                <div className="text-indigo-400 text-xs">Awaiting MD Approval</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">Awaiting MD Approval</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Reconciliation Status</Typography>
-                <Typography variant="h3" className="font-extrabold text-emerald-400">98.2%</Typography>
-                <div className="text-emerald-400 text-xs">Matched with Bank Feed</div>
+                <Typography variant="h3" className="font-extrabold text-white">0%</Typography>
+                <div className="text-slate-400 text-xs">Matched with Bank Feed</div>
               </Card>
             </div>
           </>
@@ -96,28 +96,28 @@ const Dashboard: React.FC = () => {
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Total Camp Capacity</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">2,000</Typography>
-                <div className="text-slate-400 text-xs">Beds across 5 building zones</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">Beds across 0 building zones</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Occupied Beds</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">1,750</Typography>
-                <div className="text-emerald-400 text-xs">87.5% Occupancy Rate</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">0% Occupancy Rate</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Available Beds</Typography>
-                <Typography variant="h3" className="font-extrabold text-cyan-400">250</Typography>
-                <div className="text-cyan-400 text-xs">Ready for allocation</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">Ready for allocation</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Pending Handovers</Typography>
-                <Typography variant="h3" className="font-extrabold text-yellow-400">1</Typography>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
                 <div className="text-slate-400 text-xs">Weekly collection awaiting approval</div>
               </Card>
             </div>
@@ -129,28 +129,28 @@ const Dashboard: React.FC = () => {
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Assigned Tickets</Typography>
-                <Typography variant="h3" className="font-extrabold text-yellow-400">12</Typography>
-                <div className="text-red-400 text-xs font-bold">3 High Priority</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs font-bold">0 High Priority</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Completed Today</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">4</Typography>
-                <div className="text-emerald-400 text-xs">Avg resolution time: 3 hours</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">Avg resolution time: 0 hours</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Warranties Monitored</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">85</Typography>
-                <div className="text-indigo-400 text-xs">Assets with active warranty</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">Assets with active warranty</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Pending Inspections</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">2</Typography>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
                 <div className="text-slate-400 text-xs">Assigned for survey</div>
               </Card>
             </div>
@@ -162,14 +162,14 @@ const Dashboard: React.FC = () => {
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Active Users</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">14</Typography>
-                <div className="text-slate-400 text-xs">Online accounts: 6</div>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
+                <div className="text-slate-400 text-xs">Online accounts: 0</div>
               </Card>
             </div>
             <div>
               <Card className="glass-panel p-4 flex flex-col gap-2">
                 <Typography variant="body2" className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Audit Logs Generated</Typography>
-                <Typography variant="h3" className="font-extrabold text-white">245</Typography>
+                <Typography variant="h3" className="font-extrabold text-white">0</Typography>
                 <div className="text-slate-400 text-xs">Security events tracked</div>
               </Card>
             </div>

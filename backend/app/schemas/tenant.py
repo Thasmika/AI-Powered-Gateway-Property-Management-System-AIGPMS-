@@ -135,6 +135,7 @@ class LeaseDocumentOut(LeaseDocumentBase):
 class LeaseVersionBase(BaseModel):
     contract_start_date: date
     contract_end_date: date
+    contract_value: Optional[Decimal] = None
     annual_rent: Decimal
     currency: Optional[str] = "AED"
     payment_frequency: Optional[str] = None
@@ -143,6 +144,7 @@ class LeaseVersionBase(BaseModel):
     agent_commission: Optional[Decimal] = 0
     municipality_fee: Optional[Decimal] = 0
     ejari_number: Optional[str] = None
+    premises_no: Optional[str] = None
     contract_reference: Optional[str] = None
     status: Optional[str] = "Active"
     notes: Optional[str] = None
@@ -154,6 +156,7 @@ class LeaseVersionCreate(LeaseVersionBase):
 class LeaseVersionUpdate(BaseModel):
     contract_start_date: Optional[date] = None
     contract_end_date: Optional[date] = None
+    contract_value: Optional[Decimal] = None
     annual_rent: Optional[Decimal] = None
     currency: Optional[str] = None
     payment_frequency: Optional[str] = None
@@ -162,6 +165,7 @@ class LeaseVersionUpdate(BaseModel):
     agent_commission: Optional[Decimal] = None
     municipality_fee: Optional[Decimal] = None
     ejari_number: Optional[str] = None
+    premises_no: Optional[str] = None
     contract_reference: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
@@ -190,7 +194,9 @@ class LeaseBase(BaseModel):
     property_id: str
     unit_id: str
     tenant_id: str
+    legal_owner_id: Optional[str] = None
     lease_type: Optional[str] = None
+    lease_date: Optional[date] = None
     status: Optional[str] = "Active"
 
 class LeaseCreate(LeaseBase):
@@ -208,6 +214,10 @@ class LeaseOut(LeaseBase):
     created_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    
+    tenant_name: Optional[str] = None
+    property_name: Optional[str] = None
+    unit_number: Optional[str] = None
     
     versions: List[LeaseVersionOut] = []
 

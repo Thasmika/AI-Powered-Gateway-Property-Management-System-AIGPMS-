@@ -10,7 +10,7 @@ from app.models.pdc import (
     PDCReceived, PDCReceivedStatusHistory, ChequeReturn, ChequeReplacement
 )
 from app.schemas.pdc import (
-    PDCReceivedResponse, PDCStatusUpdate, ChequeReturnCreate, ChequeReplacementCreate
+    PDCReceivedResponse, PDCStatusUpdate, ChequeReturnCreate, ChequeReplacementCreate, PDCReceivedUpdate
 )
 from pydantic import BaseModel
 
@@ -41,12 +41,15 @@ def log_status_change(db: Session, pdc: PDCReceived, new_status: str, reason: st
 def get_pdc_register(
     skip: int = 0, limit: int = 100, 
     status_filter: str = None,
+    tenant_id: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     query = db.query(PDCReceived)
     if status_filter:
         query = query.filter(PDCReceived.status == status_filter)
+    if tenant_id:
+        query = query.filter(PDCReceived.tenant_id == tenant_id)
         
     return query.order_by(PDCReceived.cheque_date.asc()).offset(skip).limit(limit).all()
 
@@ -220,3 +223,45 @@ def replace_pdc(
     db.commit()
     db.refresh(old_pdc)
     return old_pdc
+
+@router.put("/{pdc_id}", response_model=PDCReceivedResponse)
+def update_pdc(
+    pdc_id: str,
+    update_data: PDCReceivedUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"]))
+):
+    pdc = db.query(PDCReceived).filter(PDCReceived.pdc_received_id == pdc_id).first()
+    if not pdc:
+        raise HTTPException(status_code=404, detail="PDC not found")
+
+    update_dict = update_data.model_dump(exclude_unset=True)
+    
+    status_changed = False
+    old_status = pdc.status
+    
+    for key, value in update_dict.items():
+        if key == 'status' and value != pdc.status:
+            status_changed = True
+        setattr(pdc, key, value)
+        
+    if status_changed:
+        log_status_change(db, pdc, pdc.status, "Manual Status Update", current_user.user_id, "Updated via edit form")
+
+    db.commit()
+    db.refresh(pdc)
+    return pdc
+
+@router.delete("/{pdc_id}")
+def delete_pdc(
+    pdc_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"]))
+):
+    pdc = db.query(PDCReceived).filter(PDCReceived.pdc_received_id == pdc_id).first()
+    if not pdc:
+        raise HTTPException(status_code=404, detail="PDC not found")
+        
+    db.delete(pdc)
+    db.commit()
+    return {"ok": True}

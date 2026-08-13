@@ -32,22 +32,35 @@ def list_title_deeds(
 
 @router.post("", response_model=TitleDeedOut, status_code=status.HTTP_201_CREATED)
 def create_title_deed(
-    unit_id: str,
     payload: TitleDeedCreate,
+    unit_id: str = None,
+    property_id: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """Create a new title deed for a unit"""
-    # Check if unit exists
-    unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == unit_id).first()
-    if not unit:
-        raise HTTPException(status_code=404, detail="Property Unit not found")
+    """Create a new title deed for a unit or property"""
+    if not unit_id and not property_id:
+        raise HTTPException(status_code=400, detail="Must provide either unit_id or property_id")
         
-    # Check if title deed already exists for this unit
-    if db.query(TitleDeed).filter(TitleDeed.unit_id == unit_id).first():
-        raise HTTPException(status_code=400, detail="Title deed already exists for this unit")
-        
-    db_obj = TitleDeed(**payload.model_dump(), unit_id=unit_id)
+    if unit_id:
+        # Check if unit exists
+        unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == unit_id).first()
+        if not unit:
+            raise HTTPException(status_code=404, detail="Property Unit not found")
+            
+        # Check if title deed already exists for this unit
+        if db.query(TitleDeed).filter(TitleDeed.unit_id == unit_id).first():
+            raise HTTPException(status_code=400, detail="Title deed already exists for this unit")
+            
+    if property_id:
+        prop = db.query(Property).filter(Property.property_id == property_id).first()
+        if not prop:
+            raise HTTPException(status_code=404, detail="Property not found")
+            
+        if db.query(TitleDeed).filter(TitleDeed.property_id == property_id).first():
+            raise HTTPException(status_code=400, detail="Title deed already exists for this property")
+            
+    db_obj = TitleDeed(**payload.model_dump(exclude={'unit_id', 'property_id'}), unit_id=unit_id, property_id=property_id)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -169,6 +182,44 @@ def add_acquisition_cost(
         db=db,
         user_id=current_user.user_id,
         action="Record Acquisition Cost",
+        module="TitleDeed",
+        old_value=None,
+        new_value=f"Cost: {total_cost}"
+    )
+    return db_obj
+    
+@router.put("/{title_deed_id}/acquisition-cost", response_model=PropertyAcquisitionCostOut)
+def update_acquisition_cost(
+    title_deed_id: str,
+    payload: PropertyAcquisitionCostCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Update acquisition cost for a title deed"""
+    db_obj = db.query(PropertyAcquisitionCost).filter(PropertyAcquisitionCost.title_deed_id == title_deed_id).first()
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Acquisition cost not found")
+        
+    total_cost = (
+        (payload.purchase_price or Decimal("0")) + 
+        (payload.registration_fees or Decimal("0")) + 
+        (payload.broker_commission or Decimal("0")) + 
+        (payload.other_acquisition_costs or Decimal("0"))
+    )
+
+    db_obj.purchase_price = payload.purchase_price
+    db_obj.registration_fees = payload.registration_fees
+    db_obj.broker_commission = payload.broker_commission
+    db_obj.other_acquisition_costs = payload.other_acquisition_costs
+    db_obj.total_acquisition_cost = total_cost
+    
+    db.commit()
+    db.refresh(db_obj)
+    
+    create_audit_log(
+        db=db,
+        user_id=current_user.user_id,
+        action="Update Acquisition Cost",
         module="TitleDeed",
         old_value=None,
         new_value=f"Cost: {total_cost}"

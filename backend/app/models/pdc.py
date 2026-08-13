@@ -169,10 +169,10 @@ class PDCReceived(Base):
     receivable                  = relationship("LeasePaymentSchedule", back_populates="pdc_received")
     receipt_line                = relationship("RentalReceiptPaymentLine", back_populates="pdc_received",
                                                foreign_keys="RentalReceiptPaymentLine.pdc_received_id")
-    status_history              = relationship("PDCReceivedStatusHistory", back_populates="pdc_received")
+    status_history              = relationship("PDCReceivedStatusHistory", back_populates="pdc_received", cascade="all, delete-orphan")
     replacement                 = relationship("ChequeReplacement", back_populates="original_pdc",
-                                               foreign_keys="ChequeReplacement.original_pdc_id")
-    return_event                = relationship("ChequeReturn", back_populates="pdc_received", uselist=False)
+                                               foreign_keys="ChequeReplacement.original_pdc_id", cascade="all, delete-orphan")
+    return_event                = relationship("ChequeReturn", back_populates="pdc_received", uselist=False, cascade="all, delete-orphan")
 
 
 class PDCReceivedStatusHistory(Base):
@@ -341,7 +341,7 @@ class PDCIssued(Base):
     updated_at                  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     bank_account                = relationship("BankAccount", back_populates="pdc_issued")
-    status_history              = relationship("PDCIssuedStatusHistory", back_populates="pdc_issued")
+    status_history              = relationship("PDCIssuedStatusHistory", back_populates="pdc_issued", cascade="all, delete-orphan")
 
 
 class PDCIssuedStatusHistory(Base):

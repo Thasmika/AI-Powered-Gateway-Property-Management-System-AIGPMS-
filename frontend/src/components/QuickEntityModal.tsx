@@ -4,11 +4,11 @@ import { useAuth } from '../context/AuthContext';
 
 export interface QuickEntityModalProps {
   open: boolean;
-  type: 'legal_owner' | 'beneficial_owner' | 'bank' | 'tenant';
+  type: 'legal_owner' | 'beneficial_owner' | 'bank' | 'tenant' | 'property_type';
   mode: 'add' | 'edit';
   initialData?: any;
   onClose: () => void;
-  onSuccess: (type: 'legal_owner' | 'beneficial_owner' | 'bank' | 'tenant', savedData: any) => void;
+  onSuccess: (type: 'legal_owner' | 'beneficial_owner' | 'bank' | 'tenant' | 'property_type', savedData: any) => void;
 }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -33,6 +33,8 @@ const QuickEntityModal: React.FC<QuickEntityModalProps> = ({ open, type, mode, i
           setFormData({ bank_name: '', country: 'UAE' });
         } else if (type === 'tenant') {
           setFormData({ tenant_type: 'Individual', full_name: '', email: '', phone: '' });
+        } else if (type === 'property_type') {
+          setFormData({ type_name: '' });
         }
       }
     }
@@ -44,6 +46,7 @@ const QuickEntityModal: React.FC<QuickEntityModalProps> = ({ open, type, mode, i
       case 'beneficial_owner': return '/ownership/beneficial-owners';
       case 'bank': return '/master/banks';
       case 'tenant': return '/tenants';
+      case 'property_type': return '/master/property-types';
     }
   };
 
@@ -53,6 +56,7 @@ const QuickEntityModal: React.FC<QuickEntityModalProps> = ({ open, type, mode, i
       case 'beneficial_owner': return 'beneficial_owner_id';
       case 'bank': return 'bank_id';
       case 'tenant': return 'tenant_id';
+      case 'property_type': return 'property_type_id';
     }
   };
 
@@ -183,6 +187,18 @@ const QuickEntityModal: React.FC<QuickEntityModalProps> = ({ open, type, mode, i
           </>
         )}
 
+        {type === 'property_type' && (
+          <>
+            <TextField 
+              label="Property Type Name *" 
+              value={formData.type_name || ''} 
+              onChange={e => setFormData({...formData, type_name: e.target.value})}
+              fullWidth
+              sx={{ mt: 1 }}
+            />
+          </>
+        )}
+
       </DialogContent>
       <DialogActions sx={{ p: 2, pt: 0, justifyContent: 'space-between' }}>
         <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
@@ -191,7 +207,8 @@ const QuickEntityModal: React.FC<QuickEntityModalProps> = ({ open, type, mode, i
           onClick={handleSave} 
           disabled={loading || (
             (type === 'bank' && !formData.bank_name) ||
-            (type !== 'bank' && !formData.full_name)
+            (type === 'property_type' && !formData.type_name) ||
+            (type !== 'bank' && type !== 'property_type' && !formData.full_name)
           )}
           sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}
         >

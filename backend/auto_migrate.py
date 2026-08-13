@@ -1,45 +1,68 @@
-import sys
+"""
+Auto-migration script: safely adds missing columns to existing tables.
+Run this on the server after deployment when models have new columns.
+Uses only stdlib - no SQLAlchemy import needed.
+"""
+import sqlite3
 import os
-import traceback
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Read DATABASE_URL from .env file if present
+db_url = None
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('DATABASE_URL='):
+                db_url = line.split('=', 1)[1].strip().strip('"').strip("'")
+                break
 
-from app.database.session import engine, Base
-from sqlalchemy import inspect, text
-import app.main  # Ensures all models are imported and registered in Base.metadata
+if not db_url:
+    db_url = "sqlite:///./aigpms.db"
 
-def migrate():
-    inspector = inspect(engine)
-    added_count = 0
-    
-    with engine.connect() as conn:
-        for table_name in Base.metadata.tables:
-            if not inspector.has_table(table_name):
-                print(f"Table {table_name} does not exist, skipping (run create_all first).")
-                continue
-            
-            # Get existing columns from the database
-            existing_cols = {col['name'] for col in inspector.get_columns(table_name)}
-            
-            # Get defined columns from SQLAlchemy metadata
-            table = Base.metadata.tables[table_name]
-            for column in table.columns:
-                if column.name not in existing_cols:
-                    print(f"Missing column: {column.name} in table: {table_name}")
-                    try:
-                        col_type = column.type.compile(engine.dialect)
-                        # Build ALTER TABLE query
-                        query = text(f"ALTER TABLE {table_name} ADD COLUMN {column.name} {col_type}")
-                        conn.execute(query)
-                        print(f"Successfully added {column.name} to {table_name}")
-                        added_count += 1
-                    except Exception as e:
-                        print(f"Failed to add {column.name} to {table_name}: {e}")
-                        traceback.print_exc()
-        
-        conn.commit()
+# Convert SQLAlchemy URL to file path
+DB_PATH = db_url.replace("sqlite:///", "")
+if DB_PATH.startswith("./"):
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), DB_PATH[2:])
 
-    print(f"Migration completed. Added {added_count} columns.")
+print(f"Connecting to: {DB_PATH}")
+conn = sqlite3.connect(DB_PATH)
+cursor = conn.cursor()
 
-if __name__ == '__main__':
-    migrate()
+def add_column_if_missing(table: str, column: str, col_type: str):
+    cursor.execute(f"PRAGMA table_info({table})")
+    cols = [row[1] for row in cursor.fetchall()]
+    if column not in cols:
+        print(f"  + Adding column: {table}.{column}")
+        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+    else:
+        print(f"  [OK] Already exists: {table}.{column}")
+
+print("\n--- Migrating property_units ---")
+add_column_if_missing("property_units", "balcony",               "VARCHAR(50)")
+add_column_if_missing("property_units", "legal_owner_id",        "VARCHAR(36)")
+add_column_if_missing("property_units", "beneficial_owner_id",   "VARCHAR(36)")
+add_column_if_missing("property_units", "bank_id",               "VARCHAR(36)")
+add_column_if_missing("property_units", "tenant_id",             "VARCHAR(36)")
+add_column_if_missing("property_units", "area_measure",          "VARCHAR(20)")
+
+print("\n--- Migrating title_deeds ---")
+add_column_if_missing("title_deeds", "legal_owner_id",           "VARCHAR(36)")
+add_column_if_missing("title_deeds", "beneficial_owner_id",      "VARCHAR(36)")
+add_column_if_missing("title_deeds", "purchase_method",          "VARCHAR(100)")
+add_column_if_missing("title_deeds", "purchased_from",           "VARCHAR(200)")
+add_column_if_missing("title_deeds", "notes",                    "TEXT")
+add_column_if_missing("title_deeds", "attachment_path",          "VARCHAR(500)")
+add_column_if_missing("title_deeds", "mortgage_bank",            "VARCHAR(200)")
+add_column_if_missing("title_deeds", "mortgage_status",          "VARCHAR(50)")
+add_column_if_missing("title_deeds", "outstanding_loan",         "NUMERIC(15,2)")
+add_column_if_missing("title_deeds", "loan_to_value_ratio",      "NUMERIC(10,4)")
+add_column_if_missing("title_deeds", "mortgage_expiry_date",     "DATE")
+add_column_if_missing("title_deeds", "loan_number",              "VARCHAR(100)")
+
+print("\n--- Migrating lease_versions ---")
+add_column_if_missing("lease_versions", "premises_no",           "VARCHAR(100)")
+
+conn.commit()
+conn.close()
+print("\n✅ Migration complete.")

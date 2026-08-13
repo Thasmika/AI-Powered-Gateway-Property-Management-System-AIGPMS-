@@ -63,10 +63,10 @@ def get_investment_dashboard(
         capital_appreciation_pct = (unrealized_capital_gain / total_purchase_value) * 100
 
     # 5. Net Rental Yield % (Mocked for Sprint 2)
-    net_rental_yield_pct = Decimal("6.5")
+    net_rental_yield_pct = Decimal("0")
 
     # 6. Return on Investment (ROI) % (Mocked for Sprint 2)
-    roi_pct = Decimal("8.2")
+    roi_pct = Decimal("0")
 
     # 7. Total Loan Outstanding
     total_loan_outstanding = db.query(func.sum(TitleDeed.outstanding_loan)).scalar() or Decimal("0")

@@ -52,6 +52,7 @@ class Property(Base):
     documents         = relationship("PropertyDocument", back_populates="property")
     ownership_records = relationship("OwnershipRecord", back_populates="property")
     expenses          = relationship("Expense", back_populates="property")
+    title_deed        = relationship("TitleDeed", back_populates="property", uselist=False)
 
 
 class PropertyUnit(Base):
@@ -65,6 +66,7 @@ class PropertyUnit(Base):
     floor_number   = Column(String(20), nullable=True)
     balcony        = Column(String(50), nullable=True)   # With Balcony / Without Balcony
     area_sqm       = Column(Numeric(10, 2), nullable=True)
+    area_measure   = Column(String(20), default="SQM")
     plot_number    = Column(String(100), nullable=True)
     makani_number  = Column(String(100), nullable=True)
     status         = Column(String(30), default="Vacant")  # Vacant, Occupied, Under Maintenance
@@ -76,9 +78,9 @@ class PropertyUnit(Base):
     created_at     = Column(DateTime, default=datetime.utcnow)
 
     property       = relationship("Property", back_populates="units")
-    leases         = relationship("Lease", back_populates="unit")
-    title_deed     = relationship("TitleDeed", back_populates="unit", uselist=False)
-    ownership_records = relationship("OwnershipRecord", back_populates="unit")
+    leases         = relationship("Lease", back_populates="unit", cascade="all, delete-orphan")
+    title_deed     = relationship("TitleDeed", back_populates="unit", uselist=False, cascade="all, delete-orphan")
+    ownership_records = relationship("OwnershipRecord", back_populates="unit", cascade="all, delete-orphan")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -94,13 +96,22 @@ class TitleDeed(Base):
     __tablename__ = "title_deeds"
 
     title_deed_id               = Column(String(36), primary_key=True, default=generate_uuid)
-    unit_id                     = Column(String(36), ForeignKey("property_units.unit_id"), nullable=False, unique=True)
+    property_id                 = Column(String(36), ForeignKey("properties.property_id"), nullable=True, unique=True)
+    unit_id                     = Column(String(36), ForeignKey("property_units.unit_id"), nullable=True, unique=True)
 
     # Legal Identifiers
     title_deed_number           = Column(String(100), nullable=True, index=True)
     municipality_property_number = Column(String(100), nullable=True)
     plot_number                 = Column(String(100), nullable=True)
     unit_number                 = Column(String(50), nullable=True)
+    property_type               = Column(String(100), nullable=True)
+    unit_size                   = Column(Numeric(10, 2), nullable=True)
+    unit_size_measure           = Column(String(20), nullable=True) # e.g., Sq.Ft, Sq.M
+    floor_number                = Column(String(20), nullable=True)
+    building_number             = Column(String(50), nullable=True)
+    building_name               = Column(String(200), nullable=True)
+    community                   = Column(String(200), nullable=True)
+    emirate                     = Column(String(100), nullable=True)
     issue_date                  = Column(Date, nullable=True)
 
     # Ownership
@@ -109,6 +120,7 @@ class TitleDeed(Base):
     financier                   = Column(String(200), nullable=True)
     ownership_percentage        = Column(Numeric(5, 2), nullable=True)  # e.g. 100.00
     purchase_method             = Column(String(50), nullable=True)     # Cash, Mortgage, Transfer
+    purchased_from              = Column(String(300), nullable=True)
     ownership_status            = Column(String(50), default="Active")  # Active, Mortgaged, Disputed, Sold
 
     # Financing / Mortgage
@@ -119,16 +131,28 @@ class TitleDeed(Base):
     loan_to_value_ratio         = Column(Numeric(5, 2), nullable=True)  # LTV %
     mortgage_expiry_date        = Column(Date, nullable=True)
 
+    notes                       = Column(Text, nullable=True)
     attachment_path             = Column(String(500), nullable=True)
 
     created_at                  = Column(DateTime, default=datetime.utcnow)
     updated_at                  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    property                    = relationship("Property", back_populates="title_deed")
     unit                        = relationship("PropertyUnit", back_populates="title_deed")
     acquisition_costs           = relationship("PropertyAcquisitionCost", back_populates="title_deed", uselist=False)
     legal_owner_rel             = relationship("LegalOwner", back_populates="title_deeds")
     beneficial_owner_rel        = relationship("BeneficialOwner", back_populates="title_deeds")
+
+    import builtins
+    
+    @builtins.property
+    def legal_owner(self):
+        return self.legal_owner_rel.full_name if self.legal_owner_rel else None
+
+    @builtins.property
+    def beneficial_owner(self):
+        return self.beneficial_owner_rel.full_name if self.beneficial_owner_rel else None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

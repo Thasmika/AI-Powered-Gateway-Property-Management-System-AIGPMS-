@@ -7,6 +7,8 @@ import AddIcon from '@mui/icons-material/Add';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -28,6 +30,8 @@ const LeaseList: React.FC = () => {
   const [properties, setProperties] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [leaseToDelete, setLeaseToDelete] = useState<Lease | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -68,6 +72,24 @@ const LeaseList: React.FC = () => {
       case 'Expired': return { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' };
       case 'Terminated': return { bg: 'rgba(100,116,139,0.15)', text: '#64748b' };
       default: return { bg: 'rgba(255,255,255,0.1)', text: 'white' };
+    }
+  };
+
+  const handleDeleteClick = (lease: Lease) => {
+    setLeaseToDelete(lease);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!leaseToDelete) return;
+    try {
+      await api.delete(`/leases/${leaseToDelete.lease_id}`);
+      setLeases(leases.filter(l => l.lease_id !== leaseToDelete.lease_id));
+      setDeleteDialogOpen(false);
+      setLeaseToDelete(null);
+    } catch (e: any) {
+      setError(e.response?.data?.detail || e.message || 'Failed to delete lease');
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -135,6 +157,11 @@ const LeaseList: React.FC = () => {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => handleDeleteClick(lease)} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.1)' } }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   )
@@ -144,6 +171,35 @@ const LeaseList: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        PaperProps={{
+          style: {
+            backgroundColor: '#1e1e2f',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }
+        }}
+      >
+        <DialogTitle>Delete Tenancy Contract</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            Are you sure you want to delete the contract <strong>{leaseToDelete?.lease_number}</strong>?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

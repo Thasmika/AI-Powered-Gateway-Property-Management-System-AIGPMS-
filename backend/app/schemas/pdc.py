@@ -41,8 +41,8 @@ class RentalReceiptPaymentLineResponse(RentalReceiptPaymentLineBase):
 # ─────────────────────────────────────────────────────────────────────────────
 class RentalReceiptBase(BaseModel):
     receipt_date: date
-    tenant_id: str
-    property_id: str
+    tenant_id: Optional[str] = None
+    property_id: Optional[str] = None
     unit_id: Optional[str] = None
     lease_id: str
     lease_version_id: str
@@ -130,6 +130,17 @@ class PDCStatusUpdate(BaseModel):
     reason: Optional[str] = None
     notes: Optional[str] = None
     deposit_bank_account: Optional[str] = None  # for deposit action
+
+class PDCReceivedUpdate(BaseModel):
+    cheque_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder: Optional[str] = None
+    cheque_date: Optional[date] = None
+    cheque_amount: Optional[Decimal] = None
+    rental_period_from: Optional[date] = None
+    rental_period_to: Optional[date] = None
+    remarks: Optional[str] = None
+    status: Optional[str] = None
 
 class ChequeReturnCreate(BaseModel):
     return_date: date

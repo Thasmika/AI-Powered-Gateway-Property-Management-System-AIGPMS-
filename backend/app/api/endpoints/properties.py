@@ -166,6 +166,7 @@ def recalculate_property_totals(db: Session, property_id: str):
     total_units = db.query(func.count(PropertyUnit.unit_id)).filter(PropertyUnit.property_id == property_id).scalar() or 0
     total_area = db.query(func.sum(PropertyUnit.area_sqm)).filter(PropertyUnit.property_id == property_id).scalar() or 0
     
+    # Auto-update property's total_units and total_area_sqm based on actual units added
     prop.total_units = total_units
     prop.total_area_sqm = total_area
     db.commit()
@@ -218,10 +219,20 @@ def create_property_unit(
     db.commit()
     db.refresh(db_obj)
     
-    # Cascading Logic
+    # Auto-inherit from Property's Title Deed if not explicitly provided
+    if not legal_owner_id:
+        property_title_deed = db.query(TitleDeed).filter(TitleDeed.property_id == property_id).first()
+        if property_title_deed and property_title_deed.legal_owner_id:
+            legal_owner_id = property_title_deed.legal_owner_id
+            beneficial_owner_id = property_title_deed.beneficial_owner_id
+    
     if legal_owner_id:
         title_deed = TitleDeed(
+            property_id=property_id,
             unit_id=db_obj.unit_id,
+            unit_number=db_obj.unit_number,
+            property_type=db_obj.unit_type,
+            unit_size=db_obj.area_sqm,
             legal_owner_id=legal_owner_id,
             beneficial_owner_id=beneficial_owner_id,
             ownership_percentage=100.0,
@@ -308,10 +319,96 @@ def update_property_unit(
     if not db_obj:
         raise HTTPException(status_code=404, detail="Property Unit not found")
 
-    update_data = payload.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
+    payload_dict = payload.model_dump(exclude_unset=True)
+    legal_owner_id = payload_dict.pop("legal_owner_id", None)
+    beneficial_owner_id = payload_dict.pop("beneficial_owner_id", None)
+    bank_id = payload_dict.pop("bank_id", None)
+    tenant_id = payload_dict.pop("tenant_id", None)
+
+    for key, value in payload_dict.items():
         setattr(db_obj, key, value)
         
+    # Update cascading relationships
+    if legal_owner_id:
+        title_deed = db.query(TitleDeed).filter(TitleDeed.unit_id == unit_id).first()
+        if title_deed:
+            title_deed.legal_owner_id = legal_owner_id
+            if beneficial_owner_id:
+                title_deed.beneficial_owner_id = beneficial_owner_id
+        else:
+            title_deed = TitleDeed(
+                property_id=property_id,
+                unit_id=db_obj.unit_id,
+                unit_number=db_obj.unit_number,
+                property_type=db_obj.unit_type,
+                unit_size=db_obj.area_sqm,
+                legal_owner_id=legal_owner_id,
+                beneficial_owner_id=beneficial_owner_id,
+                ownership_percentage=100.0,
+                ownership_status="Active"
+            )
+            db.add(title_deed)
+            
+        ownership = db.query(OwnershipRecord).filter(OwnershipRecord.unit_id == unit_id).first()
+        if ownership:
+            ownership.legal_owner_id = legal_owner_id
+        else:
+            ownership = OwnershipRecord(
+                property_id=property_id,
+                unit_id=db_obj.unit_id,
+                legal_owner_id=legal_owner_id,
+                ownership_type="Freehold",
+                ownership_percentage=100.0,
+                is_current=True
+            )
+            db.add(ownership)
+        db.flush()
+        
+        if beneficial_owner_id and bank_id:
+            bank = db.query(MasterBank).filter(MasterBank.bank_id == bank_id).first()
+            if bank:
+                allocation = db.query(BeneficiaryAllocation).filter(BeneficiaryAllocation.ownership_record_id == ownership.ownership_id).first()
+                if allocation:
+                    allocation.beneficial_owner_id = beneficial_owner_id
+                    allocation.bank_name = bank.bank_name
+                else:
+                    allocation = BeneficiaryAllocation(
+                        ownership_record_id=ownership.ownership_id,
+                        beneficial_owner_id=beneficial_owner_id,
+                        allocation_percentage=100.0,
+                        bank_name=bank.bank_name,
+                        is_current=True
+                    )
+                    db.add(allocation)
+                    
+    if tenant_id:
+        lease = db.query(Lease).filter(Lease.unit_id == unit_id, Lease.status != "Terminated").first()
+        if lease:
+            lease.tenant_id = tenant_id
+        else:
+            import uuid
+            from datetime import date
+            from app.models.tenant import LeaseVersion
+            lease = Lease(
+                lease_number=f"DRAFT-{uuid.uuid4().hex[:8].upper()}",
+                property_id=property_id,
+                unit_id=db_obj.unit_id,
+                tenant_id=tenant_id,
+                status="Draft"
+            )
+            db.add(lease)
+            db.flush()
+            lease_version = LeaseVersion(
+                lease_id=lease.lease_id,
+                version_number=1,
+                contract_start_date=date.today(),
+                contract_end_date=date.today(),
+                annual_rent=0,
+                security_deposit=0,
+                status="Draft"
+            )
+            db.add(lease_version)
+
     db.commit()
     db.refresh(db_obj)
     
@@ -342,8 +439,31 @@ def delete_property_unit(
     if not db_obj:
         raise HTTPException(status_code=404, detail="Property Unit not found")
 
-    db.delete(db_obj)
-    db.commit()
+    try:
+        from app.models.tenant import LeaseVersion
+        
+        # 1. Leases and their versions
+        leases = db.query(Lease).filter(Lease.unit_id == unit_id).all()
+        for lease in leases:
+            db.query(LeaseVersion).filter(LeaseVersion.lease_id == lease.lease_id).delete()
+            db.delete(lease)
+            
+        # 2. Ownership records and allocations
+        ownerships = db.query(OwnershipRecord).filter(OwnershipRecord.unit_id == unit_id).all()
+        for ownership in ownerships:
+            db.query(BeneficiaryAllocation).filter(BeneficiaryAllocation.ownership_record_id == ownership.ownership_id).delete()
+            db.delete(ownership)
+            
+        # 3. Title Deed
+        db.query(TitleDeed).filter(TitleDeed.unit_id == unit_id).delete()
+
+        db.delete(db_obj)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="Cannot delete unit because it has dependent records (e.g., active leases, payments, or expenses).")
     
     recalculate_property_totals(db, property_id)
     

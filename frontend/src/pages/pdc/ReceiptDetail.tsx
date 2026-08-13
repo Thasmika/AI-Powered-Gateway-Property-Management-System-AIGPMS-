@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Box, Typography, Paper, Grid, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Stack } from '@mui/material';
+import PrintIcon from '@mui/icons-material/Print';
+import SendIcon from '@mui/icons-material/Send';
 import api from '../../services/api';
 
 const ReceiptDetail: React.FC = () => {
@@ -29,81 +32,105 @@ const ReceiptDetail: React.FC = () => {
     }
   };
 
-  if (!receipt) return <div className="p-6">Loading...</div>;
+  if (!receipt) return <Box p={3} color="white">Loading...</Box>;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Receipt {receipt.receipt_number}</h1>
-        <div className="space-x-4">
-          <button onClick={() => window.print()} className="bg-gray-100 text-gray-700 px-4 py-2 border rounded shadow hover:bg-gray-200">
+    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
+        <Typography variant="h4" fontWeight={700} color="white">
+          Receipt {receipt.receipt_number}
+        </Typography>
+        <Stack direction="row" spacing={2}>
+          <Button 
+            variant="outlined" 
+            startIcon={<PrintIcon />} 
+            onClick={() => window.print()}
+            sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}
+          >
             Print PDF
-          </button>
+          </Button>
           {receipt.receipt_status !== 'Posted' && (
-            <button onClick={handlePost} className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">
+            <Button 
+              variant="contained" 
+              color="success" 
+              startIcon={<SendIcon />} 
+              onClick={handlePost}
+            >
               Post Receipt
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+        </Stack>
+      </Stack>
 
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <p className="text-sm text-gray-500">Status</p>
-            <p className="font-semibold">{receipt.receipt_status}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Date</p>
-            <p className="font-semibold">{receipt.receipt_date}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Amount</p>
-            <p className="font-semibold">{receipt.total_amount} {receipt.currency}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Tenant</p>
-            <p className="font-semibold">{receipt.tenant_id}</p>
-          </div>
-        </div>
-      </div>
+      <Paper sx={{ p: 3, mb: 4, bgcolor: '#1a1f36', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={3}>
+            <Typography variant="caption" color="text.secondary">Status</Typography>
+            <Box mt={0.5}>
+              <Chip 
+                label={receipt.receipt_status} 
+                color={receipt.receipt_status === 'Posted' ? 'success' : 'warning'} 
+                size="small" 
+              />
+            </Box>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <Typography variant="caption" color="text.secondary">Date</Typography>
+            <Typography variant="body1" color="white" fontWeight={600}>{receipt.receipt_date}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <Typography variant="caption" color="text.secondary">Total Amount</Typography>
+            <Typography variant="body1" color="white" fontWeight={600}>{receipt.total_amount} {receipt.currency}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <Typography variant="caption" color="text.secondary">Lease Number</Typography>
+            <Typography variant="body1" color="white" fontWeight={600}>{receipt.lease?.lease_number || 'N/A'}</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-bold mb-4">Payment Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cheque No</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bank</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Linked PDC</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+      <Paper sx={{ p: 0, bgcolor: '#1a1f36', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+        <Box p={2} borderBottom="1px solid rgba(255,255,255,0.1)">
+          <Typography variant="h6" color="white">Payment Lines</Typography>
+        </Box>
+        <TableContainer>
+          <Table>
+            <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.2)' }}>
+              <TableRow>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>#</TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>Type</TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>Cheque No</TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>Bank</TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>Date</TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>Amount</TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: 'none' }}>Linked PDC</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {receipt.payment_lines.map((line: any, idx: number) => (
-                <tr key={idx}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{line.line_number}</td>
-                  <td className="px-4 py-2 text-sm text-gray-500">{line.instrument_type}</td>
-                  <td className="px-4 py-2 text-sm text-gray-500">{line.cheque_number || '-'}</td>
-                  <td className="px-4 py-2 text-sm text-gray-500">{line.bank_name || '-'}</td>
-                  <td className="px-4 py-2 text-sm text-gray-500">{line.instrument_date || '-'}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{line.amount}</td>
-                  <td className="px-4 py-2 text-sm text-indigo-600">
+                <TableRow key={idx} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableCell sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.05)' }}>{line.line_number}</TableCell>
+                  <TableCell sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.05)' }}>{line.instrument_type}</TableCell>
+                  <TableCell sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.05)' }}>{line.cheque_number || '-'}</TableCell>
+                  <TableCell sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.05)' }}>{line.bank_name || '-'}</TableCell>
+                  <TableCell sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.05)' }}>{line.instrument_date || '-'}</TableCell>
+                  <TableCell sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.05)' }}>{line.amount}</TableCell>
+                  <TableCell sx={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                     {line.pdc_received_id ? (
-                      <Link to={`/pdc/register/${line.pdc_received_id}`}>View PDC</Link>
-                    ) : '-'}
-                  </td>
-                </tr>
+                      <Button component={Link} to={`/pdc/register/${line.pdc_received_id}`} size="small" variant="outlined" sx={{ color: '#6366f1', borderColor: 'rgba(99,102,241,0.5)' }}>
+                        View PDC
+                      </Button>
+                    ) : (
+                      <Typography color="text.secondary" variant="body2">-</Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Box>
   );
 };
 

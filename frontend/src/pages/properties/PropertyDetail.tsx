@@ -23,6 +23,7 @@ interface PropertyUnit {
   unit_number: string;
   unit_type: string | null;
   area_sqm: number | null;
+  area_measure?: string | null;
   plot_number: string | null;
   makani_number: string | null;
   status: string;
@@ -37,6 +38,9 @@ interface PropertyUnit {
   beneficial_owner_id?: string | null;
   bank_id?: string | null;
   tenant_id?: string | null;
+  purchase_price?: number | null;
+  registration_fees?: number | null;
+  broker_commission?: number | null;
 }
 
 interface PropertyDetail {
@@ -73,6 +77,7 @@ const PropertyDetail: React.FC = () => {
   const [beneficialOwners, setBeneficialOwners] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [tenants, setTenants] = useState<any[]>([]);
+  const [propertyTypes, setPropertyTypes] = useState<any[]>([]);
 
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [viewUnitOpen, setViewUnitOpen] = useState(false);
@@ -89,6 +94,7 @@ const PropertyDetail: React.FC = () => {
     floor_number: '',
     balcony: 'Without Balcony',
     area_sqm: '',
+    area_measure: 'SQM',
     plot_number: '',
     makani_number: '',
     status: 'Vacant',
@@ -100,7 +106,10 @@ const PropertyDetail: React.FC = () => {
     photo_1: '',
     photo_2: '',
     photo_3: '',
-    photo_4: ''
+    photo_4: '',
+    purchase_price: '',
+    registration_fees: '',
+    broker_commission: ''
   });
   const [unitSaving, setUnitSaving] = useState(false);
 
@@ -162,30 +171,36 @@ const PropertyDetail: React.FC = () => {
 
   const fetchDropdowns = useCallback(async () => {
     try {
-      const [legalRes, benRes, bankRes, tenantRes] = await Promise.all([
+      const [legalRes, benRes, bankRes, tenantRes, propTypesRes] = await Promise.all([
         fetch(`${API}/ownership/legal-owners`, { headers: authHeaders }),
         fetch(`${API}/ownership/beneficial-owners`, { headers: authHeaders }),
         fetch(`${API}/master/banks`, { headers: authHeaders }),
-        fetch(`${API}/tenants`, { headers: authHeaders })
+        fetch(`${API}/tenants`, { headers: authHeaders }),
+        fetch(`${API}/master/property-types`, { headers: authHeaders })
       ]);
       
       if (legalRes.ok) setLegalOwners(await legalRes.json());
       if (benRes.ok) setBeneficialOwners(await benRes.json());
       if (bankRes.ok) setBanks(await bankRes.json());
       if (tenantRes.ok) setTenants(await tenantRes.json());
+      if (propTypesRes.ok) setPropertyTypes(await propTypesRes.json());
     } catch (err) {
       console.error("Failed to fetch dropdowns", err);
     }
   }, [authHeaders]);
 
   useEffect(() => {
-    if (unitModalOpen) fetchDropdowns();
-  }, [unitModalOpen, fetchDropdowns]);
+    if (unitModalOpen || viewUnitOpen) fetchDropdowns();
+  }, [unitModalOpen, viewUnitOpen, fetchDropdowns]);
 
   const handleQuickActionSuccess = (type: QuickEntityModalProps['type'], savedData: any) => {
     fetchDropdowns();
     setQuickAction(prev => ({ ...prev, open: false }));
     // Auto-select the newly created or edited entity
+    if (type === 'property_type') {
+      setUnitData(prev => ({ ...prev, unit_type: savedData.type_name }));
+      return;
+    }
     const idField = type === 'legal_owner' ? 'legal_owner_id' :
                    type === 'beneficial_owner' ? 'beneficial_owner_id' :
                    type === 'bank' ? 'bank_id' : 'tenant_id';
@@ -229,6 +244,7 @@ const PropertyDetail: React.FC = () => {
         floor_number: unitData.floor_number || null,
         balcony: unitData.balcony || null,
         area_sqm: unitData.area_sqm ? parseFloat(unitData.area_sqm) : null,
+        area_measure: unitData.area_measure || 'SQM',
         plot_number: unitData.plot_number || null,
         makani_number: unitData.makani_number || null,
         status: unitData.status,
@@ -240,7 +256,10 @@ const PropertyDetail: React.FC = () => {
         ...(unitData.legal_owner_id && { legal_owner_id: unitData.legal_owner_id }),
         ...(unitData.beneficial_owner_id && { beneficial_owner_id: unitData.beneficial_owner_id }),
         ...(unitData.bank_id && { bank_id: unitData.bank_id }),
-        ...(unitData.tenant_id && { tenant_id: unitData.tenant_id })
+        ...(unitData.tenant_id && { tenant_id: unitData.tenant_id }),
+        purchase_price: unitData.purchase_price ? parseFloat(unitData.purchase_price) : null,
+        registration_fees: unitData.registration_fees ? parseFloat(unitData.registration_fees) : null,
+        broker_commission: unitData.broker_commission ? parseFloat(unitData.broker_commission) : null
       };
       
       const isEdit = !!unitData.unit_id;
@@ -254,7 +273,7 @@ const PropertyDetail: React.FC = () => {
       });
       if (!res.ok) throw new Error(`Failed to ${isEdit ? 'update' : 'add'} unit`);
       setUnitModalOpen(false);
-      setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
+      setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '', purchase_price: '', registration_fees: '', broker_commission: '' });
       fetchProperty();
     } catch (e: any) {
       alert(e.message);
@@ -270,7 +289,10 @@ const PropertyDetail: React.FC = () => {
         method: 'DELETE',
         headers: authHeaders
       });
-      if (!res.ok) throw new Error('Failed to delete unit');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to delete unit');
+      }
       fetchProperty();
     } catch (e: any) {
       alert(e.message);
@@ -378,7 +400,7 @@ const PropertyDetail: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ color: 'white' }}>Units</Typography>
               <Button size="small" variant="outlined" onClick={() => {
-                setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
+                setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', area_measure: 'SQM', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '', purchase_price: '', registration_fees: '', broker_commission: '' });
                 setUnitModalOpen(true);
               }} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Add Unit</Button>
             </Box>
@@ -400,7 +422,7 @@ const PropertyDetail: React.FC = () => {
                     <TableRow key={unit.unit_id} sx={{ '& td': { borderColor: 'rgba(255,255,255,0.04)' } }}>
                       <TableCell sx={{ color: 'white' }}>{unit.unit_number}</TableCell>
                       <TableCell sx={{ color: 'text.secondary' }}>{unit.unit_type || '—'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{unit.area_sqm || '—'} sqm</TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{unit.area_sqm || '—'} {unit.area_measure?.toLowerCase() || 'sqm'}</TableCell>
                       <TableCell>
                          <Chip label={unit.status} size="small" sx={{ bgcolor: unit.status === 'Vacant' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)', color: unit.status === 'Vacant' ? '#f59e0b' : '#10b981', fontSize: '0.7rem' }} />
                       </TableCell>
@@ -416,6 +438,7 @@ const PropertyDetail: React.FC = () => {
                             floor_number: unit.floor_number || '',
                             balcony: unit.balcony || 'Without Balcony',
                             area_sqm: unit.area_sqm ? String(unit.area_sqm) : '',
+                            area_measure: unit.area_measure || 'SQM',
                             plot_number: unit.plot_number || '',
                             makani_number: unit.makani_number || '',
                             status: unit.status,
@@ -427,7 +450,10 @@ const PropertyDetail: React.FC = () => {
                             photo_1: unit.photo_1 || '',
                             photo_2: unit.photo_2 || '',
                             photo_3: unit.photo_3 || '',
-                            photo_4: unit.photo_4 || ''
+                            photo_4: unit.photo_4 || '',
+                            purchase_price: unit.purchase_price ? String(unit.purchase_price) : '',
+                            registration_fees: unit.registration_fees ? String(unit.registration_fees) : '',
+                            broker_commission: unit.broker_commission ? String(unit.broker_commission) : ''
                           });
                           setUnitModalOpen(true);
                         }} sx={{ color: 'text.secondary', '&:hover': { color: 'white' }, mr: 1 }}>
@@ -450,230 +476,322 @@ const PropertyDetail: React.FC = () => {
       {/* @ts-ignore */}
       <Dialog open={unitModalOpen} onClose={() => setUnitModalOpen(false)} PaperProps={{ sx: { bgcolor: '#1e1e2d', color: 'white' } }}>
         <DialogTitle>{unitData.unit_id ? 'Edit Unit' : 'Add New Unit'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2, minWidth: 400 }}>
-          <TextField 
-            label="Unit Number *" 
-            value={unitData.unit_number} 
-            onChange={(e) => setUnitData({...unitData, unit_number: e.target.value})}
-            fullWidth
-            sx={{ mt: 1 }}
-          />
-          <Autocomplete
-            freeSolo
-            options={['Apartment', 'Villa', 'Office', 'Retail', 'Warehouse', 'Room']}
-            value={unitData.unit_type}
-            onChange={(_, newValue) => setUnitData({...unitData, unit_type: newValue || ''})}
-            onInputChange={(_, newInputValue) => setUnitData({...unitData, unit_type: newInputValue})}
-            renderInput={(params) => (
-              <TextField {...params} label="Type" fullWidth />
-            )}
-          />
-          <TextField 
-            label="Floor Number" 
-            value={unitData.floor_number} 
-            onChange={(e) => setUnitData({...unitData, floor_number: e.target.value})}
-            fullWidth
-          />
-          <TextField 
-            select 
-            label="Balcony" 
-            value={unitData.balcony} 
-            onChange={(e) => setUnitData({...unitData, balcony: e.target.value})}
-            fullWidth
-          >
-            {['With Balcony', 'Without Balcony'].map(opt => (
-              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-            ))}
-          </TextField>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField 
-              label="Area (SqM)" 
-              type="number"
-              value={unitData.area_sqm} 
-              onChange={(e) => setUnitData({...unitData, area_sqm: e.target.value})}
-              fullWidth
-            />
-            <TextField 
-              label="Plot Number" 
-              value={unitData.plot_number} 
-              onChange={(e) => setUnitData({...unitData, plot_number: e.target.value})}
-              fullWidth
-            />
-            <TextField 
-              label="Makani Number" 
-              value={unitData.makani_number} 
-              onChange={(e) => setUnitData({...unitData, makani_number: e.target.value})}
-              fullWidth
-            />
-          </Box>
-          <TextField 
-            select 
-            label="Status" 
-            value={unitData.status} 
-            onChange={(e) => setUnitData({...unitData, status: e.target.value})}
-            fullWidth
-          >
-            {['Vacant', 'Occupied', 'Maintenance'].map(opt => (
-              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Unit Description"
-            value={unitData.unit_description}
-            onChange={(e) => setUnitData({...unitData, unit_description: e.target.value})}
-            fullWidth
-            multiline
-            rows={2}
-          />
-
-          <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
-          <Typography variant="subtitle2" color="text.secondary">Unit Photos</Typography>
-          <Grid container spacing={2}>
-            {[1, 2, 3, 4].map((num) => (
-              <Grid size={{ xs: 6, sm: 3 }} key={`photo_${num}`}>
-                <ImageUpload
-                  label={`Photo ${num}`}
-                  value={(unitData as any)[`photo_${num}`]}
-                  onChange={(url) => setUnitData({ ...unitData, [`photo_${num}`]: url })}
+        <DialogContent sx={{ pt: 2, minWidth: 600 }}>
+          <Grid container spacing={3}>
+            {/* Row 1: Unit Number, Type */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                label="Unit Number *" 
+                value={unitData.unit_number} 
+                onChange={(e) => setUnitData({...unitData, unit_number: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%' }}>
+                <Autocomplete
+                  freeSolo
+                  options={propertyTypes.map((pt: any) => pt.type_name)}
+                  value={unitData.unit_type}
+                  onChange={(_, newValue) => setUnitData({...unitData, unit_type: newValue || ''})}
+                  onInputChange={(_, newInputValue) => setUnitData({...unitData, unit_type: newInputValue})}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Type" fullWidth />
+                  )}
+                  sx={{ flexGrow: 1 }}
                 />
-              </Grid>
-            ))}
-          </Grid>
-          
-          <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
-          <Typography variant="subtitle2" color="text.secondary">Optional Associations (Auto-creates records)</Typography>
-          
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField 
-              select 
-              label="Legal Owner" 
-              value={unitData.legal_owner_id} 
-              onChange={(e) => setUnitData({...unitData, legal_owner_id: e.target.value})}
-              fullWidth
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {legalOwners.map(owner => (
-                <MenuItem key={owner.legal_owner_id} value={owner.legal_owner_id}>{owner.full_name}</MenuItem>
-              ))}
-            </TextField>
-            <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'legal_owner', mode: 'add' })}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-            {unitData.legal_owner_id && (
-              <>
-                <IconButton size="small" onClick={() => {
-                  const data = legalOwners.find(o => o.legal_owner_id === unitData.legal_owner_id);
-                  setQuickAction({ open: true, type: 'legal_owner', mode: 'edit', data });
-                }}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleDeleteEntity('legal_owner', unitData.legal_owner_id)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => setUnitData({...unitData, legal_owner_id: ''})}><ClearIcon fontSize="small" /></IconButton>
-              </>
-            )}
-          </Box>
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setQuickAction({ open: true, type: 'property_type', mode: 'add' })} sx={{ height: 56, borderColor: 'rgba(255,255,255,0.2)', color: 'white', whiteSpace: 'nowrap' }}>
+                  New
+                </Button>
+              </Box>
+            </Grid>
 
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField 
-              select 
-              label="Beneficial Owner" 
-              value={unitData.beneficial_owner_id} 
-              onChange={(e) => setUnitData({...unitData, beneficial_owner_id: e.target.value})}
-              fullWidth
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {beneficialOwners.map(owner => (
-                <MenuItem key={owner.beneficial_owner_id} value={owner.beneficial_owner_id}>{owner.full_name}</MenuItem>
-              ))}
-            </TextField>
-            <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'beneficial_owner', mode: 'add' })}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-            {unitData.beneficial_owner_id && (
-              <>
-                <IconButton size="small" onClick={() => {
-                  const data = beneficialOwners.find(o => o.beneficial_owner_id === unitData.beneficial_owner_id);
-                  setQuickAction({ open: true, type: 'beneficial_owner', mode: 'edit', data });
-                }}>
-                  <EditIcon fontSize="small" />
+            {/* Row 2: Floor Number, Balcony */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                label="Floor Number" 
+                value={unitData.floor_number} 
+                onChange={(e) => setUnitData({...unitData, floor_number: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                select 
+                label="Balcony" 
+                value={unitData.balcony} 
+                onChange={(e) => setUnitData({...unitData, balcony: e.target.value})}
+                fullWidth
+              >
+                {['With Balcony', 'Without Balcony'].map(opt => (
+                  <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            {/* Row 3: Area, Area Measure, Plot Number */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField 
+                  label="Area" 
+                  type="number"
+                  value={unitData.area_sqm} 
+                  onChange={(e) => setUnitData({...unitData, area_sqm: e.target.value})}
+                  fullWidth
+                />
+                <TextField
+                  select
+                  value={unitData.area_measure || 'SQM'}
+                  onChange={(e) => setUnitData({...unitData, area_measure: e.target.value})}
+                  sx={{ minWidth: 100 }}
+                >
+                  <MenuItem value="SQM">SQM</MenuItem>
+                  <MenuItem value="SQF">SQF</MenuItem>
+                </TextField>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                label="Plot Number" 
+                value={unitData.plot_number} 
+                onChange={(e) => setUnitData({...unitData, plot_number: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+
+            {/* Row 4: Makani Number, Status */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                label="Makani Number" 
+                value={unitData.makani_number} 
+                onChange={(e) => setUnitData({...unitData, makani_number: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                select 
+                label="Status" 
+                value={unitData.status} 
+                onChange={(e) => setUnitData({...unitData, status: e.target.value})}
+                fullWidth
+              >
+                {['Vacant', 'Occupied', 'Maintenance'].map(opt => (
+                  <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            {/* Row 5: Unit Description */}
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                label="Unit Description"
+                value={unitData.unit_description}
+                onChange={(e) => setUnitData({...unitData, unit_description: e.target.value})}
+                fullWidth
+                multiline
+                rows={2}
+              />
+            </Grid>
+
+            {/* Row 6: Prices */}
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField 
+                label="Purchase Price" 
+                type="number"
+                value={unitData.purchase_price} 
+                onChange={(e) => setUnitData({...unitData, purchase_price: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField 
+                label="Registration Fees" 
+                type="number"
+                value={unitData.registration_fees} 
+                onChange={(e) => setUnitData({...unitData, registration_fees: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField 
+                label="Broker Commission" 
+                type="number"
+                value={unitData.broker_commission} 
+                onChange={(e) => setUnitData({...unitData, broker_commission: e.target.value})}
+                fullWidth
+              />
+            </Grid>
+
+            {/* Photos */}
+            <Grid size={{ xs: 12 }}>
+              <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>Unit Photos</Typography>
+              <Grid container spacing={2}>
+                {[1, 2, 3, 4].map((num) => (
+                  <Grid size={{ xs: 6, sm: 3 }} key={`photo_${num}`}>
+                    <ImageUpload
+                      label={`Photo ${num}`}
+                      value={(unitData as any)[`photo_${num}`]}
+                      onChange={(url) => setUnitData({ ...unitData, [`photo_${num}`]: url })}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Grid>
+
+            {/* Associations */}
+            <Grid size={{ xs: 12 }}>
+              <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>Optional Associations (Auto-creates records)</Typography>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField 
+                  select 
+                  label="Legal Owner" 
+                  value={unitData.legal_owner_id} 
+                  onChange={(e) => setUnitData({...unitData, legal_owner_id: e.target.value})}
+                  fullWidth
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {legalOwners.map(owner => (
+                    <MenuItem key={owner.legal_owner_id} value={owner.legal_owner_id}>{owner.full_name}</MenuItem>
+                  ))}
+                </TextField>
+                <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'legal_owner', mode: 'add' })}>
+                  <AddIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => handleDeleteEntity('beneficial_owner', unitData.beneficial_owner_id)}>
-                  <DeleteIcon fontSize="small" />
+                {unitData.legal_owner_id && (
+                  <>
+                    <IconButton size="small" onClick={() => {
+                      const data = legalOwners.find(o => o.legal_owner_id === unitData.legal_owner_id);
+                      setQuickAction({ open: true, type: 'legal_owner', mode: 'edit', data });
+                    }}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteEntity('legal_owner', unitData.legal_owner_id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setUnitData({...unitData, legal_owner_id: ''})}><ClearIcon fontSize="small" /></IconButton>
+                  </>
+                )}
+              </Box>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField 
+                  select 
+                  label="Beneficial Owner" 
+                  value={unitData.beneficial_owner_id} 
+                  onChange={(e) => setUnitData({...unitData, beneficial_owner_id: e.target.value})}
+                  fullWidth
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {beneficialOwners.map(owner => (
+                    <MenuItem key={owner.beneficial_owner_id} value={owner.beneficial_owner_id}>{owner.full_name}</MenuItem>
+                  ))}
+                </TextField>
+                <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'beneficial_owner', mode: 'add' })}>
+                  <AddIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => setUnitData({...unitData, beneficial_owner_id: ''})}><ClearIcon fontSize="small" /></IconButton>
-              </>
-            )}
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField 
-              select 
-              label="Bank Account" 
-              value={unitData.bank_id} 
-              onChange={(e) => setUnitData({...unitData, bank_id: e.target.value})}
-              fullWidth
-              disabled={!unitData.beneficial_owner_id}
-              helperText={!unitData.beneficial_owner_id ? 'Select Beneficiary first' : ''}
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {banks.map(bank => (
-                <MenuItem key={bank.bank_id} value={bank.bank_id}>{bank.bank_name}</MenuItem>
-              ))}
-            </TextField>
-            <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'bank', mode: 'add' })}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-            {unitData.bank_id && (
-              <>
-                <IconButton size="small" onClick={() => {
-                  const data = banks.find(b => b.bank_id === unitData.bank_id);
-                  setQuickAction({ open: true, type: 'bank', mode: 'edit', data });
-                }}>
-                  <EditIcon fontSize="small" />
+                {unitData.beneficial_owner_id && (
+                  <>
+                    <IconButton size="small" onClick={() => {
+                      const data = beneficialOwners.find(o => o.beneficial_owner_id === unitData.beneficial_owner_id);
+                      setQuickAction({ open: true, type: 'beneficial_owner', mode: 'edit', data });
+                    }}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteEntity('beneficial_owner', unitData.beneficial_owner_id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setUnitData({...unitData, beneficial_owner_id: ''})}><ClearIcon fontSize="small" /></IconButton>
+                  </>
+                )}
+              </Box>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField 
+                  select 
+                  label="Bank Account" 
+                  value={unitData.bank_id} 
+                  onChange={(e) => setUnitData({...unitData, bank_id: e.target.value})}
+                  fullWidth
+                  disabled={!unitData.beneficial_owner_id}
+                  helperText={!unitData.beneficial_owner_id ? 'Select Beneficiary first' : ''}
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {banks
+                    .filter(bank => {
+                      if (!unitData.beneficial_owner_id) return true;
+                      const selectedBen = beneficialOwners.find(o => o.beneficial_owner_id === unitData.beneficial_owner_id);
+                      return selectedBen && selectedBen.bank_id === bank.bank_id;
+                    })
+                    .map(bank => (
+                    <MenuItem key={bank.bank_id} value={bank.bank_id}>{bank.bank_name}</MenuItem>
+                  ))}
+                </TextField>
+                <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'bank', mode: 'add' })}>
+                  <AddIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => setUnitData({...unitData, bank_id: ''})}><ClearIcon fontSize="small" /></IconButton>
-              </>
-            )}
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField 
-              select 
-              label="Tenant" 
-              value={unitData.tenant_id} 
-              onChange={(e) => setUnitData({...unitData, tenant_id: e.target.value})}
-              fullWidth
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {tenants.map(tenant => (
-                <MenuItem key={tenant.tenant_id} value={tenant.tenant_id}>{tenant.first_name} {tenant.last_name}</MenuItem>
-              ))}
-            </TextField>
-            <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'tenant', mode: 'add' })}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-            {unitData.tenant_id && (
-              <>
-                <IconButton size="small" onClick={() => {
-                  const data = tenants.find(t => t.tenant_id === unitData.tenant_id);
-                  setQuickAction({ open: true, type: 'tenant', mode: 'edit', data });
-                }}>
-                  <EditIcon fontSize="small" />
+                {unitData.bank_id && (
+                  <>
+                    <IconButton size="small" onClick={() => {
+                      const data = banks.find(b => b.bank_id === unitData.bank_id);
+                      setQuickAction({ open: true, type: 'bank', mode: 'edit', data });
+                    }}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setUnitData({...unitData, bank_id: ''})}><ClearIcon fontSize="small" /></IconButton>
+                  </>
+                )}
+              </Box>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField 
+                  select 
+                  label="Tenant" 
+                  value={unitData.tenant_id} 
+                  onChange={(e) => setUnitData({...unitData, tenant_id: e.target.value})}
+                  fullWidth
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {tenants.map(tenant => (
+                    <MenuItem key={tenant.tenant_id} value={tenant.tenant_id}>{tenant.first_name} {tenant.last_name}</MenuItem>
+                  ))}
+                </TextField>
+                <IconButton size="small" onClick={() => setQuickAction({ open: true, type: 'tenant', mode: 'add' })}>
+                  <AddIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => handleDeleteEntity('tenant', unitData.tenant_id)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => setUnitData({...unitData, tenant_id: ''})}><ClearIcon fontSize="small" /></IconButton>
-              </>
-            )}
-          </Box>
+                {unitData.tenant_id && (
+                  <>
+                    <IconButton size="small" onClick={() => {
+                      const data = tenants.find(t => t.tenant_id === unitData.tenant_id);
+                      setQuickAction({ open: true, type: 'tenant', mode: 'edit', data });
+                    }}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteEntity('tenant', unitData.tenant_id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setUnitData({...unitData, tenant_id: ''})}><ClearIcon fontSize="small" /></IconButton>
+                  </>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 0, justifyContent: 'space-between' }}>
           <Button onClick={() => {
             setUnitModalOpen(false);
-            setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '' });
+            setUnitData({ unit_id: '', unit_number: '', unit_type: 'Apartment', floor_number: '', balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '', status: 'Vacant', unit_description: '', legal_owner_id: '', beneficial_owner_id: '', bank_id: '', tenant_id: '', photo_1: '', photo_2: '', photo_3: '', photo_4: '', purchase_price: '', registration_fees: '', broker_commission: '' });
           }} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button 
             variant="contained" 
@@ -685,6 +803,15 @@ const PropertyDetail: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <QuickEntityModal
+        open={quickAction.open}
+        type={quickAction.type}
+        mode={quickAction.mode}
+        initialData={quickAction.data}
+        onClose={() => setQuickAction({ ...quickAction, open: false })}
+        onSuccess={handleQuickActionSuccess}
+      />
 
       <Dialog open={viewUnitOpen} onClose={() => setViewUnitOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#1e1e2d', color: 'white', borderRadius: 2 } }}>
         <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>Unit Details - {selectedUnit?.unit_number}</DialogTitle>
@@ -719,6 +846,25 @@ const PropertyDetail: React.FC = () => {
               <Typography variant="body2">{selectedUnit?.makani_number || '—'}</Typography>
             </Box>
           </Box>
+          <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Legal Owner</Typography>
+              <Typography variant="body2">{legalOwners.find(o => o.legal_owner_id === selectedUnit?.legal_owner_id)?.full_name || '—'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Beneficiary Owner</Typography>
+              <Typography variant="body2">{beneficialOwners.find(o => o.beneficial_owner_id === selectedUnit?.beneficial_owner_id)?.full_name || '—'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Bank Account</Typography>
+              <Typography variant="body2">{banks.find(b => b.bank_id === selectedUnit?.bank_id)?.bank_name || '—'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Tenant Name</Typography>
+              <Typography variant="body2">{(() => { const t = tenants.find(x => x.tenant_id === selectedUnit?.tenant_id); return t ? t.full_name || t.first_name : '—'; })()}</Typography>
+            </Box>
+          </Box>
           <Box>
             <Typography variant="caption" color="text.secondary">Description</Typography>
             <Typography variant="body2">{selectedUnit?.unit_description || '—'}</Typography>
@@ -726,7 +872,7 @@ const PropertyDetail: React.FC = () => {
           <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
           <Grid container spacing={2}>
              {[selectedUnit?.photo_1, selectedUnit?.photo_2, selectedUnit?.photo_3, selectedUnit?.photo_4].map((photo, i) => {
-                const imageUrl = getFileUrl(photo);
+                const imageUrl = photo ? getFileUrl(photo) : null;
                 return (
                   <Grid size={{ xs: 6, sm: 3 }} key={i}>
                     <Box sx={{ height: 100, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', border: '1px dashed rgba(255,255,255,0.2)', overflow: 'hidden' }}>
@@ -737,7 +883,7 @@ const PropertyDetail: React.FC = () => {
              })}
           </Grid>
           <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'center' }}>
-            <Button variant="outlined" size="small" onClick={handleOpenTenancyHistory} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Tenancy History</Button>
+            <Button variant="outlined" size="small" onClick={handleOpenTenancyHistory} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>View Tenancy Contracts</Button>
             <Button variant="outlined" size="small" onClick={() => setGalleryOpen(true)} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Photo Gallery</Button>
             <Button variant="outlined" size="small" onClick={() => navigate('/maintenance')} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>Maintenance History</Button>
           </Box>
@@ -767,7 +913,7 @@ const PropertyDetail: React.FC = () => {
 
       {/* Tenancy History Modal */}
       <Dialog open={tenancyHistoryOpen} onClose={() => setTenancyHistoryOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { bgcolor: '#1e1e2d', color: 'white', borderRadius: 2 } }}>
-        <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>Tenancy History - Unit {selectedUnit?.unit_number}</DialogTitle>
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>Tenancy Contracts - Unit {selectedUnit?.unit_number}</DialogTitle>
         <DialogContent sx={{ p: 3 }}>
           {leasesLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>

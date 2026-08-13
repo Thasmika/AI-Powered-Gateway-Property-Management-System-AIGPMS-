@@ -18,6 +18,8 @@ import WarningIcon from '@mui/icons-material/Warning';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -55,6 +57,17 @@ interface TenantDocument {
   notes: string | null;
   uploaded_by: string | null;
   upload_date: string;
+}
+
+interface PDCReceivedData {
+  pdc_received_id: string;
+  pdc_receipt_reference: string;
+  cheque_number: string;
+  bank_name: string;
+  cheque_date: string;
+  cheque_amount: number;
+  status: string;
+  remarks: string | null;
 }
 
 interface TabPanelProps {
@@ -140,6 +153,10 @@ const TenantDetail: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // PDC state
+  const [pdcs, setPdcs] = useState<PDCReceivedData[]>([]);
+  const [pdcsLoading, setPdcsLoading] = useState(false);
+
   // Upload form state
   const [docType, setDocType] = useState('');
   const [docName, setDocName] = useState('');
@@ -172,10 +189,24 @@ const TenantDetail: React.FC = () => {
     }
   }, [tenantId]);
 
+  // ── Fetch PDCs ────────────────────────────────────────────────────────────
+  const fetchPDCs = useCallback(async () => {
+    setPdcsLoading(true);
+    try {
+      const res = await api.get(`/pdc-received?tenant_id=${tenantId}`);
+      setPdcs(res.data);
+    } catch {
+      // silently swallow — list will just be empty
+    } finally {
+      setPdcsLoading(false);
+    }
+  }, [tenantId]);
+
   useEffect(() => {
     fetchTenant();
     fetchDocuments();
-  }, [fetchTenant, fetchDocuments]);
+    fetchPDCs();
+  }, [fetchTenant, fetchDocuments, fetchPDCs]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -369,9 +400,43 @@ const TenantDetail: React.FC = () => {
 
         {/* ── Tab 2: PDC History ─────────────────────────────────────────── */}
         <CustomTabPanel value={tabValue} index={2}>
-          <Box sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
-            <Typography>PDC History will be implemented in Sprint 5.</Typography>
-          </Box>
+          {pdcsLoading ? (
+            <Box sx={{ textAlign: 'center', py: 5 }}><CircularProgress /></Box>
+          ) : pdcs.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
+              <ReceiptIcon sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+              <Typography>No PDCs found for this tenant.</Typography>
+            </Box>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+                  <TableRow>
+                    <TableCell>Reference</TableCell>
+                    <TableCell>Cheque Date</TableCell>
+                    <TableCell>Cheque Number</TableCell>
+                    <TableCell>Bank</TableCell>
+                    <TableCell align="right">Amount</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pdcs.map(p => (
+                    <TableRow key={p.pdc_received_id}>
+                      <TableCell>{p.pdc_receipt_reference}</TableCell>
+                      <TableCell>{formatDate(p.cheque_date)}</TableCell>
+                      <TableCell>{p.cheque_number}</TableCell>
+                      <TableCell>{p.bank_name}</TableCell>
+                      <TableCell align="right">AED {Number(p.cheque_amount).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Chip size="small" label={p.status} color={p.status === 'Cleared' ? 'success' : p.status === 'Returned' ? 'error' : p.status === 'Deposited' ? 'info' : p.status === 'Held' ? 'default' : 'warning'} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CustomTabPanel>
 
         {/* ── Tab 3: Documents ──────────────────────────────────────────── */}
@@ -577,17 +642,21 @@ const TenantDetail: React.FC = () => {
 
             {/* Expiry Date */}
             <Grid item xs={12} sm={6}>
-              <TextField
+              <DatePicker
                 label="Expiry Date (optional)"
-                type="date"
-                value={docExpiry}
-                onChange={(e) => setDocExpiry(e.target.value)}
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true, style: { color: 'rgba(255,255,255,0.6)' } }}
-                InputProps={{ style: { color: 'white' } }}
-                sx={{ '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.15)' } }}
-                id="doc-expiry-input"
+                format="DD/MM/YYYY"
+                value={docExpiry ? dayjs(docExpiry) : null}
+                onChange={(newValue) => setDocExpiry(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                    InputLabelProps: { style: { color: 'rgba(255,255,255,0.6)' } },
+                    InputProps: { style: { color: 'white' } },
+                    sx: { '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.15)' } },
+                    id: "doc-expiry-input"
+                  }
+                }}
               />
             </Grid>
 

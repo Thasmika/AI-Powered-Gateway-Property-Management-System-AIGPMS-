@@ -33,6 +33,12 @@ class LegalOwner(Base):
     email           = Column(String(150), nullable=True)
     phone           = Column(String(30), nullable=True)
     address         = Column(Text, nullable=True)
+    
+    # Banking Details
+    bank_id             = Column(String(36), ForeignKey("master_banks.bank_id"), nullable=True)
+    bank_account_name   = Column(String(200), nullable=True)
+    bank_account_number = Column(String(100), nullable=True)
+
     status          = Column(String(20), default="Active")
     created_at      = Column(DateTime, default=datetime.utcnow)
     updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -41,6 +47,9 @@ class LegalOwner(Base):
     
     # Relationship to Title Deed
     title_deeds = relationship("TitleDeed", back_populates="legal_owner_rel")
+
+    # Relationship to Bank
+    bank = relationship("MasterBank", back_populates="legal_owners")
 
 
 class BeneficialOwner(Base):
@@ -59,6 +68,12 @@ class BeneficialOwner(Base):
     email               = Column(String(150), nullable=True)
     phone               = Column(String(30), nullable=True)
     address             = Column(Text, nullable=True)
+    
+    # Banking Details
+    bank_id             = Column(String(36), ForeignKey("master_banks.bank_id"), nullable=True)
+    bank_account_name   = Column(String(200), nullable=True)
+    bank_account_number = Column(String(100), nullable=True)
+
     status              = Column(String(20), default="Active")
     created_at          = Column(DateTime, default=datetime.utcnow)
     updated_at          = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -67,6 +82,9 @@ class BeneficialOwner(Base):
 
     # Relationship to Title Deed
     title_deeds = relationship("TitleDeed", back_populates="beneficial_owner_rel")
+
+    # Relationship to Bank
+    bank = relationship("MasterBank", back_populates="beneficial_owners")
 
 
 class OwnershipRecord(Base):

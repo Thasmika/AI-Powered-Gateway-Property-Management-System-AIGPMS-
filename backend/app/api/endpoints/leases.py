@@ -22,7 +22,8 @@ def list_leases(
     """
     List all leases with their versions.
     """
-    leases = db.query(Lease).offset(skip).limit(limit).all()
+    from app.models.property import Property
+    leases = db.query(Lease).join(Property, Lease.property_id == Property.property_id).order_by(Property.property_name.asc()).offset(skip).limit(limit).all()
     return leases
 
 @router.post("/", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)
@@ -34,6 +35,14 @@ def create_lease(
     """
     Create a new lease along with its initial version and payment schedules.
     """
+    # Check if lease number already exists
+    existing_lease = db.query(Lease).filter(Lease.lease_number == lease_in.lease_number).first()
+    if existing_lease:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lease with reference number {lease_in.lease_number} already exists"
+        )
+
     # Create the Lease container
     new_lease = Lease(
         lease_number=lease_in.lease_number,
@@ -45,6 +54,14 @@ def create_lease(
         created_by=current_user.user_id
     )
     db.add(new_lease)
+    
+    # Update unit status to 'Occupied'
+    from app.models.property import PropertyUnit
+    if lease_in.unit_id:
+        unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == lease_in.unit_id).first()
+        if unit:
+            unit.status = "Occupied"
+
     db.flush() # get lease_id
 
     # Create the initial LeaseVersion (version_number = 1)
@@ -148,6 +165,100 @@ def renew_lease(
     db.commit()
     db.refresh(lease)
     return lease
+
+@router.put("/{lease_id}", response_model=LeaseOut)
+def update_lease(
+    lease_id: str,
+    lease_in: LeaseCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    """
+    Update an existing lease and its current version.
+    """
+    lease = db.query(Lease).filter(Lease.lease_id == lease_id).first()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Lease not found")
+
+    from app.models.property import PropertyUnit
+
+    # Handle unit status if unit_id changed
+    if lease.unit_id != lease_in.unit_id:
+        if lease.unit_id:
+            old_unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == lease.unit_id).first()
+            if old_unit:
+                old_unit.status = "Vacant"
+        if lease_in.unit_id:
+            new_unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == lease_in.unit_id).first()
+            if new_unit:
+                new_unit.status = "Occupied"
+
+    # Update Lease fields
+    lease.lease_number = lease_in.lease_number
+    lease.property_id = lease_in.property_id
+    lease.unit_id = lease_in.unit_id
+    lease.tenant_id = lease_in.tenant_id
+    lease.lease_type = lease_in.lease_type
+    lease.status = lease_in.status
+
+    # Update current version
+    current_version = db.query(LeaseVersion).filter(
+        LeaseVersion.lease_id == lease_id, 
+        LeaseVersion.is_current_version == True
+    ).first()
+
+    if current_version:
+        version_data = lease_in.initial_version.model_dump(exclude={"schedules"})
+        for key, value in version_data.items():
+            setattr(current_version, key, value)
+
+    # Note: Complex schedule/document updates are skipped for in-place edit 
+    # to avoid overwriting payment history unintentionally. Only basic metadata is updated here.
+
+    db.commit()
+    db.refresh(lease)
+    return lease
+
+@router.delete("/{lease_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lease(
+    lease_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    """
+    Delete a lease and all associated versions, schedules, and documents.
+    """
+    lease = db.query(Lease).filter(Lease.lease_id == lease_id).first()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Lease not found")
+        
+    try:
+        from app.models.tenant import LeaseDocument
+        
+        # 1. Documents
+        db.query(LeaseDocument).filter(LeaseDocument.lease_id == lease_id).delete()
+        
+        # 2. Payment Schedules (by finding all versions first)
+        versions = db.query(LeaseVersion).filter(LeaseVersion.lease_id == lease_id).all()
+        for version in versions:
+            db.query(LeasePaymentSchedule).filter(LeasePaymentSchedule.lease_version_id == version.version_id).delete()
+            
+        # 3. Versions
+        db.query(LeaseVersion).filter(LeaseVersion.lease_id == lease_id).delete()
+        
+        # 4. Lease
+        from app.models.property import PropertyUnit
+        if lease.unit_id:
+            unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == lease.unit_id).first()
+            if unit:
+                unit.status = "Vacant"
+                
+        db.delete(lease)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete lease because it has dependent records.")
+    return None
 
 @router.get("/versions/{version_id}/schedules", response_model=List[LeasePaymentScheduleOut])
 def get_payment_schedules(

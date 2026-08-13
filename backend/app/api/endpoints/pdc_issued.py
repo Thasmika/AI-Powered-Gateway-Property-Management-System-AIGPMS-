@@ -275,3 +275,36 @@ def return_pdc(
     db.commit()
     db.refresh(pdc)
     return pdc
+
+@router.put("/{pdc_id}", response_model=PDCIssuedResponse)
+def update_pdc_issued(
+    pdc_id: str,
+    update_data: PDCIssuedUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"]))
+):
+    pdc = db.query(PDCIssued).filter(PDCIssued.pdc_issued_id == pdc_id).first()
+    if not pdc:
+        raise HTTPException(status_code=404, detail="PDC not found")
+
+    update_dict = update_data.model_dump(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(pdc, key, value)
+
+    db.commit()
+    db.refresh(pdc)
+    return pdc
+
+@router.delete("/{pdc_id}")
+def delete_pdc_issued(
+    pdc_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"]))
+):
+    pdc = db.query(PDCIssued).filter(PDCIssued.pdc_issued_id == pdc_id).first()
+    if not pdc:
+        raise HTTPException(status_code=404, detail="PDC not found")
+        
+    db.delete(pdc)
+    db.commit()
+    return {"ok": True}

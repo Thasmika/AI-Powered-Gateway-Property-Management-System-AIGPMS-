@@ -1,17 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Box, Typography, Paper, TextField, Button, Grid, MenuItem,
+  Alert, IconButton, Divider, Stack, Autocomplete, Tooltip
+} from '@mui/material';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import AddCircleOutlinedIcon from '@mui/icons-material/AddCircleOutlined';
+import LibraryAddIcon from '@mui/icons-material/LibraryAdd';
+import SaveIcon from '@mui/icons-material/Save';
 import api from '../../services/api';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
+
+const tfSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 1,
+    color: 'white',
+    bgcolor: 'rgba(255,255,255,0.05)',
+    '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+  },
+  '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+  '& .MuiSelect-icon': { color: 'rgba(255,255,255,0.7)' }
+};
+
+interface LeaseOption {
+  lease_id: string;
+  lease_number: string;
+  tenant_name: string;
+  property_name: string;
+  unit_number: string;
+  current_version: any;
+}
 
 const ReceiptVoucherEntry: React.FC = () => {
   const navigate = useNavigate();
+  const [leases, setLeases] = useState<LeaseOption[]>([]);
+  const [selectedLease, setSelectedLease] = useState<LeaseOption | null>(null);
+
   const [formData, setFormData] = useState({
     receipt_date: new Date().toISOString().split('T')[0],
-    tenant_id: '',
-    property_id: '',
-    lease_id: '',
-    lease_version_id: '',
-    total_amount: 0,
+    payment_purpose: 'New Tenancy',
     currency: 'AED',
+    total_amount: 0,
     remarks: '',
   });
 
@@ -23,36 +54,71 @@ const ReceiptVoucherEntry: React.FC = () => {
     instrument_date: ''
   }]);
 
-  const [autoGen, setAutoGen] = useState({
-    numCheques: 1,
-    startDate: new Date().toISOString().split('T')[0],
-    intervalMonths: 1
-  });
-
   const [error, setError] = useState('');
 
-  const handleAutoGen = () => {
-    if (!formData.total_amount || formData.total_amount <= 0) {
-      setError("Please enter a valid total amount before auto-generating.");
+  useEffect(() => {
+    const fetchLeases = async () => {
+      try {
+        const response = await api.get('/leases/');
+        const leaseOptions = response.data.map((lease: any) => {
+          const currentVersion = lease.versions?.find((v: any) => v.is_current_version) || lease.versions?.[lease.versions.length - 1];
+          return {
+            ...lease,
+            current_version: currentVersion
+          };
+        });
+        setLeases(leaseOptions);
+      } catch (error) {
+        console.error('Failed to fetch leases', error);
+      }
+    };
+    fetchLeases();
+  }, []);
+
+  const handleLeaseSelection = (event: any, newValue: LeaseOption | null) => {
+    setSelectedLease(newValue);
+    if (newValue && newValue.current_version) {
+      setFormData({
+        ...formData,
+        currency: newValue.current_version.currency || 'AED',
+        total_amount: Number(newValue.current_version.annual_rent || 0),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        total_amount: 0
+      });
+    }
+  };
+
+  const handleLoadFromContract = () => {
+    if (!selectedLease || !selectedLease.current_version?.payment_schedules) {
+      setError("No payment schedule found on the selected tenancy contract.");
       return;
     }
-    const amountPerCheque = (formData.total_amount / autoGen.numCheques).toFixed(2);
-    const newLines = [];
-    let currentDate = new Date(autoGen.startDate);
     
-    for (let i = 0; i < autoGen.numCheques; i++) {
-      newLines.push({
-        instrument_type: 'PDC',
-        amount: Number(amountPerCheque),
-        cheque_number: '',
-        bank_name: '',
-        instrument_date: currentDate.toISOString().split('T')[0]
-      });
-      // add interval
-      currentDate.setMonth(currentDate.getMonth() + Number(autoGen.intervalMonths));
+    const schedules = selectedLease.current_version.payment_schedules;
+    if (schedules.length === 0) {
+      setError("The selected contract has no scheduled installments.");
+      return;
     }
+
+    const newLines = schedules.map((schedule: any) => ({
+      instrument_type: 'PDC',
+      amount: Number(schedule.amount),
+      cheque_number: '',
+      bank_name: '',
+      instrument_date: schedule.due_date,
+      rental_period_from: schedule.period_from,
+      rental_period_to: schedule.period_to,
+      receivable_id: schedule.schedule_id,
+    }));
+    
     setLines(newLines);
     setError('');
+    
+    const sum = newLines.reduce((acc: number, line: any) => acc + line.amount, 0);
+    setFormData({ ...formData, total_amount: sum });
   };
 
   const addLine = () => {
@@ -79,8 +145,13 @@ const ReceiptVoucherEntry: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    if (!selectedLease || !selectedLease.current_version) {
+      setError("Please select a valid Tenancy Contract.");
+      return;
+    }
+
     const calculatedTotal = lines.reduce((sum, line) => sum + Number(line.amount), 0);
-    if (calculatedTotal !== Number(formData.total_amount)) {
+    if (Math.abs(calculatedTotal - Number(formData.total_amount)) > 0.01) {
       setError(`Receipt total (${formData.total_amount}) does not match sum of lines (${calculatedTotal})`);
       return;
     }
@@ -88,11 +159,14 @@ const ReceiptVoucherEntry: React.FC = () => {
     try {
       const payload = {
         ...formData,
+        lease_id: selectedLease.lease_id,
+        lease_version_id: selectedLease.current_version.version_id,
         payment_lines: lines.map(line => ({
           ...line,
           amount: Number(line.amount)
         }))
       };
+      
       const response = await api.post('/rental-receipts/', payload);
       navigate(`/pdc/receipts/${response.data.receipt_id}`);
     } catch (err: any) {
@@ -101,126 +175,265 @@ const ReceiptVoucherEntry: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Create Rental Receipt</h1>
+    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+      <Typography variant="h4" fontWeight={700} color="white" gutterBottom>
+        Create Receipt Voucher
+      </Typography>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-          {error}
-        </div>
+        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Receipt Header</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Receipt Date</label>
-              <input type="date" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.receipt_date} onChange={e => setFormData({...formData, receipt_date: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-              <input type="number" step="0.01" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.total_amount} onChange={e => setFormData({...formData, total_amount: Number(e.target.value)})} />
-            </div>
-            {/* Note: In a real app, these would be dropdowns populated from the backend */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tenant ID</label>
-              <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.tenant_id} onChange={e => setFormData({...formData, tenant_id: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Property ID</label>
-              <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.property_id} onChange={e => setFormData({...formData, property_id: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Lease ID</label>
-              <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.lease_id} onChange={e => setFormData({...formData, lease_id: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Lease Version ID</label>
-              <input type="text" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.lease_version_id} onChange={e => setFormData({...formData, lease_version_id: e.target.value})} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center mb-4 border-b pb-4">
-            <h2 className="text-xl font-semibold">Auto-Generate PDCs</h2>
-          </div>
-          <div className="flex gap-4 items-end mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Number of Cheques</label>
-              <input type="number" min="1" value={autoGen.numCheques} onChange={e => setAutoGen({...autoGen, numCheques: Number(e.target.value)})} className="mt-1 block w-full rounded-md border-gray-300" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <input type="date" value={autoGen.startDate} onChange={e => setAutoGen({...autoGen, startDate: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Interval (Months)</label>
-              <select value={autoGen.intervalMonths} onChange={e => setAutoGen({...autoGen, intervalMonths: Number(e.target.value)})} className="mt-1 block w-full rounded-md border-gray-300">
-                <option value={1}>Monthly (1 month)</option>
-                <option value={3}>Quarterly (3 months)</option>
-                <option value={6}>Semi-Annually (6 months)</option>
-                <option value={12}>Annually (12 months)</option>
-              </select>
-            </div>
-            <button type="button" onClick={handleAutoGen} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-              Generate Lines
-            </button>
-          </div>
-
-          <div className="flex justify-between items-center mb-4 mt-6">
-            <h2 className="text-xl font-semibold">Payment Lines</h2>
-            <button type="button" onClick={addLine} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Line manually</button>
-          </div>
+      <form onSubmit={handleSubmit}>
+        <Paper sx={{ p: 3, mb: 4, bgcolor: '#1a1f36', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <Typography variant="h6" color="white" mb={3}>1. Tenancy Contract & Header Details</Typography>
           
-          <div className="space-y-4">
-            {lines.map((line, idx) => (
-              <div key={idx} className="flex gap-4 items-end border p-4 rounded bg-gray-50">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Type</label>
-                  <select value={line.instrument_type} onChange={e => updateLine(idx, 'instrument_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300">
-                    <option value="PDC">PDC</option>
-                    <option value="Current-Dated Cheque">Current-Dated Cheque</option>
-                    <option value="Cash">Cash</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Amount</label>
-                  <input type="number" step="0.01" required value={line.amount} onChange={e => updateLine(idx, 'amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Cheque No</label>
-                  <input type="text" value={line.cheque_number} onChange={e => updateLine(idx, 'cheque_number', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Bank</label>
-                  <input type="text" value={line.bank_name} onChange={e => updateLine(idx, 'bank_name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Date</label>
-                  <input type="date" value={line.instrument_date} onChange={e => updateLine(idx, 'instrument_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300" />
-                </div>
-                {lines.length > 1 && (
-                  <button type="button" onClick={() => removeLine(idx)} className="text-red-500 mb-2">Remove</button>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Autocomplete
+                options={leases}
+                ListboxProps={{ sx: { maxHeight: '500px', '& li': { py: 2, px: 2 } } }}
+                getOptionLabel={(option) => 
+                  `Lease ${option.lease_number} — ${option.tenant_name} (${option.property_name} - Unit ${option.unit_number || 'N/A'})`
+                }
+                value={selectedLease}
+                onChange={handleLeaseSelection}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    label="Select Tenancy Contract" 
+                    required 
+                    sx={{
+                      ...tfSx,
+                      '& .MuiOutlinedInput-root': {
+                        ...tfSx['& .MuiOutlinedInput-root'],
+                        minHeight: '80px', // Very large box area
+                        fontSize: '1.25rem', // Large font for the selection box
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: '1.1rem', // Larger label
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: '1.25rem', // Larger font for input text
+                      }
+                    }}
+                    placeholder="Search by tenant, property, or lease number..."
+                  />
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Lease {option.lease_number}
+                      </Typography>
+                      <Typography variant="body1" color="text.secondary">
+                        {option.tenant_name} | {option.property_name} | Unit {option.unit_number || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+              />
+            </Grid>
 
-        <div className="flex justify-end gap-4">
-          <button type="button" onClick={() => navigate('/pdc/receipts')} className="px-4 py-2 border rounded">Cancel</button>
-          <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create Receipt</button>
-        </div>
+            {selectedLease && (
+              <Grid item xs={12}>
+                <Box sx={{ p: 2, bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 1 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Tenant</Typography>
+                      <Typography variant="body2" color="white" fontWeight={600}>{selectedLease.tenant_name}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Property & Unit</Typography>
+                      <Typography variant="body2" color="white" fontWeight={600}>{selectedLease.property_name} - {selectedLease.unit_number || 'N/A'}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Contract Period</Typography>
+                      <Typography variant="body2" color="white" fontWeight={600}>
+                        {selectedLease.current_version?.contract_start_date} to {selectedLease.current_version?.contract_end_date}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Annual Rent</Typography>
+                      <Typography variant="body2" color="white" fontWeight={600}>
+                        {Number(selectedLease.current_version?.annual_rent || 0).toLocaleString()} {selectedLease.current_version?.currency || 'AED'}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Grid>
+            )}
+
+            <Grid item xs={12} sm={4}>
+              <DatePicker
+                label="Receipt Date"
+                format="DD/MM/YYYY"
+                value={formData.receipt_date ? dayjs(formData.receipt_date) : null}
+                onChange={(newValue) => setFormData({ ...formData, receipt_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    sx: tfSx
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Payment Purpose"
+                select
+                required
+                sx={tfSx}
+                value={formData.payment_purpose}
+                onChange={e => setFormData({...formData, payment_purpose: e.target.value})}
+              >
+                <MenuItem value="New Tenancy">New Tenancy</MenuItem>
+                <MenuItem value="Renewal">Renewal</MenuItem>
+                <MenuItem value="Partial Rent">Partial Rent</MenuItem>
+                <MenuItem value="Security Deposit">Security Deposit</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Total Amount"
+                type="number"
+                required
+                sx={tfSx}
+                value={formData.total_amount}
+                onChange={e => setFormData({...formData, total_amount: Number(e.target.value)})}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        <Paper sx={{ p: 3, mb: 4, bgcolor: '#1a1f36', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h6" color="white">2. Payment Instruments</Typography>
+            <Stack direction="row" spacing={2}>
+              <Tooltip title="Auto-populate cheques using the approved payment schedule from the Tenancy Contract">
+                <Button 
+                  variant="outlined" 
+                  color="success" 
+                  startIcon={<LibraryAddIcon />}
+                  onClick={handleLoadFromContract}
+                  disabled={!selectedLease}
+                >
+                  Load from Contract Schedule
+                </Button>
+              </Tooltip>
+              <Button 
+                variant="outlined" 
+                startIcon={<AddCircleOutlinedIcon />}
+                onClick={addLine}
+              >
+                Add Row Manually
+              </Button>
+            </Stack>
+          </Stack>
+
+          <Stack spacing={2}>
+            {lines.map((line, idx) => (
+              <Box key={idx} sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 1 }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm={2}>
+                    <TextField
+                      fullWidth
+                      select
+                      label="Type"
+                      size="small"
+                      sx={tfSx}
+                      value={line.instrument_type}
+                      onChange={e => updateLine(idx, 'instrument_type', e.target.value)}
+                    >
+                      <MenuItem value="PDC">PDC</MenuItem>
+                      <MenuItem value="Current-Dated Cheque">Current-Dated Cheque</MenuItem>
+                      <MenuItem value="Cash">Cash</MenuItem>
+                      <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={2}>
+                    <TextField
+                      fullWidth
+                      label="Amount"
+                      type="number"
+                      required
+                      size="small"
+                      sx={tfSx}
+                      value={line.amount}
+                      onChange={e => updateLine(idx, 'amount', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={2}>
+                    <TextField
+                      fullWidth
+                      label="Cheque/Ref No"
+                      size="small"
+                      sx={tfSx}
+                      value={line.cheque_number}
+                      onChange={e => updateLine(idx, 'cheque_number', e.target.value)}
+                      required={line.instrument_type.includes('Cheque') || line.instrument_type === 'PDC'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField
+                      fullWidth
+                      label="Bank Name"
+                      size="small"
+                      sx={tfSx}
+                      value={line.bank_name}
+                      onChange={e => updateLine(idx, 'bank_name', e.target.value)}
+                      required={line.instrument_type.includes('Cheque') || line.instrument_type === 'PDC'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={2}>
+                    <DatePicker
+                      label="Date"
+                      format="DD/MM/YYYY"
+                      value={line.instrument_date ? dayjs(line.instrument_date) : null}
+                      onChange={(newValue) => updateLine(idx, 'instrument_date', newValue ? newValue.format('YYYY-MM-DD') : '')}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          size: "small",
+                          required: line.instrument_type.includes('Cheque') || line.instrument_type === 'PDC',
+                          sx: tfSx
+                        }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={1} textAlign="center">
+                    {lines.length > 1 && (
+                      <IconButton color="error" onClick={() => removeLine(idx)}>
+                        <DeleteOutlinedIcon />
+                      </IconButton>
+                    )}
+                  </Grid>
+                </Grid>
+              </Box>
+            ))}
+          </Stack>
+          
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Typography variant="subtitle1" color="text.secondary" mr={2}>Total Allocated:</Typography>
+            <Typography variant="h5" color={lines.reduce((s, l) => s + Number(l.amount), 0) === formData.total_amount ? "success.main" : "error.main"} fontWeight={700}>
+              {lines.reduce((s, l) => s + Number(l.amount), 0).toLocaleString()} {formData.currency}
+            </Typography>
+          </Box>
+        </Paper>
+
+        <Stack direction="row" spacing={2} justifyContent="flex-end">
+          <Button variant="outlined" onClick={() => navigate('/pdc/receipts')} sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" startIcon={<SaveIcon />} sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
+            Save Receipt
+          </Button>
+        </Stack>
       </form>
-    </div>
+    </Box>
   );
 };
 

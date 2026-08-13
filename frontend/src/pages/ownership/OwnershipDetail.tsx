@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Box, Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Box, Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, InputLabel, FormControl
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -8,6 +8,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 interface Property {
   property_id: string;
@@ -62,6 +64,15 @@ const OwnershipDetail: React.FC = () => {
   const [editingRecord, setEditingRecord] = useState<OwnershipRecord | null>(null);
   const [editPercentage, setEditPercentage] = useState<number | string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [legalOwners, setLegalOwners] = useState<Owner[]>([]);
+  const [newRecord, setNewRecord] = useState({
+    legal_owner_id: '',
+    ownership_type: 'Freehold',
+    ownership_percentage: '',
+    effective_from: new Date().toISOString().split('T')[0]
+  });
 
   const [editBeneficiaryDialogOpen, setEditBeneficiaryDialogOpen] = useState(false);
   const [editingBeneficiary, setEditingBeneficiary] = useState<BeneficiaryAllocation | null>(null);
@@ -139,6 +150,47 @@ const OwnershipDetail: React.FC = () => {
     }
   };
 
+
+  const fetchLegalOwners = async () => {
+    try {
+      const res = await fetch(`${API}/ownership/legal-owners`, { headers: authHeaders });
+      if (res.ok) setLegalOwners(await res.json());
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    if (addDialogOpen && legalOwners.length === 0) fetchLegalOwners();
+  }, [addDialogOpen, legalOwners.length, authHeaders]);
+
+  const handleAddSubmit = async () => {
+    if (!id || !newRecord.legal_owner_id || !newRecord.ownership_percentage) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/ownership/records`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          property_id: id,
+          legal_owner_id: newRecord.legal_owner_id,
+          ownership_type: newRecord.ownership_type,
+          ownership_percentage: Number(newRecord.ownership_percentage),
+          effective_from: newRecord.effective_from || null,
+          is_current: true
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to add owner');
+      }
+      setAddDialogOpen(false);
+      setNewRecord({ legal_owner_id: '', ownership_type: 'Freehold', ownership_percentage: '', effective_from: new Date().toISOString().split('T')[0] });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   const handleBeneficiaryDelete = async (allocationId: string) => {
     if (!window.confirm('Are you sure you want to delete this beneficiary allocation? This action cannot be undone.')) return;
     try {
@@ -204,6 +256,11 @@ const OwnershipDetail: React.FC = () => {
           <Typography variant="body1" color="text.secondary">Code: {property.property_code}</Typography>
         </Box>
         <Box sx={{ textAlign: 'right' }}>
+          <Box sx={{ mb: 1 }}>
+            <Button variant="contained" sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }} onClick={() => setAddDialogOpen(true)}>
+              Add Co-Owner
+            </Button>
+          </Box>
           <Typography variant="body2" color="text.secondary">Total Configured Ownership</Typography>
           <Typography variant="h5" sx={{ fontWeight: 700, color: totalOwnership === 100 ? '#10b981' : '#f59e0b' }}>
             {totalOwnership}%
@@ -217,7 +274,7 @@ const OwnershipDetail: React.FC = () => {
       {currentRecords.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <Typography color="text.secondary">No active ownership records found for this property.</Typography>
-          <Button variant="outlined" sx={{ mt: 2, borderColor: '#10b981', color: '#10b981' }}>Add Co-Owner</Button>
+          <Button variant="outlined" sx={{ mt: 2, borderColor: '#10b981', color: '#10b981' }} onClick={() => setAddDialogOpen(true)}>Add Co-Owner</Button>
         </Paper>
       ) : (
         currentRecords.map(record => (
@@ -346,15 +403,70 @@ const OwnershipDetail: React.FC = () => {
             />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 0 }}>
+        <DialogActions sx={{ p: 3, pt: 0, bgcolor: '#1e293b' }}>
           <Button onClick={() => setEditBeneficiaryDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-          <Button 
-            onClick={handleBeneficiaryEditSubmit} 
-            variant="contained" 
-            disabled={isSubmitting}
-            sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
-          >
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          <Button onClick={handleBeneficiaryEditSubmit} variant="contained" disabled={isSubmitting} sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}>
+            {isSubmitting ? <CircularProgress size={24} /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} PaperProps={{ sx: { bgcolor: '#1e293b', color: 'white', minWidth: 400 } }}>
+        <DialogTitle>Add Co-Owner</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2, mb: 3 }}>
+            <InputLabel sx={{ color: 'text.secondary' }}>Legal Owner</InputLabel>
+            <Select
+              value={newRecord.legal_owner_id}
+              label="Legal Owner"
+              onChange={(e) => setNewRecord({ ...newRecord, legal_owner_id: e.target.value })}
+              sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+            >
+              {legalOwners.map(owner => (
+                <MenuItem key={owner.owner_id} value={owner.owner_id}>{owner.full_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel sx={{ color: 'text.secondary' }}>Ownership Type</InputLabel>
+            <Select
+              value={newRecord.ownership_type}
+              label="Ownership Type"
+              onChange={(e) => setNewRecord({ ...newRecord, ownership_type: e.target.value })}
+              sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <MenuItem value="Freehold">Freehold</MenuItem>
+              <MenuItem value="Leasehold">Leasehold</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            fullWidth
+            label="Ownership Percentage (%)"
+            type="number"
+            value={newRecord.ownership_percentage}
+            onChange={(e) => setNewRecord({ ...newRecord, ownership_percentage: e.target.value })}
+            sx={{ mb: 3, input: { color: 'white' }, label: { color: 'text.secondary' } }}
+          />
+
+          <DatePicker 
+            label="Effective From" 
+            format="DD/MM/YYYY"
+            value={newRecord.effective_from ? dayjs(newRecord.effective_from) : null}
+            onChange={(newValue) => setNewRecord({ ...newRecord, effective_from: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                sx: { input: { color: 'white' }, label: { color: 'text.secondary' } }
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0, bgcolor: '#1e293b' }}>
+          <Button onClick={() => setAddDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleAddSubmit} variant="contained" disabled={isSubmitting || !newRecord.legal_owner_id || !newRecord.ownership_percentage} sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}>
+            {isSubmitting ? <CircularProgress size={24} /> : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>

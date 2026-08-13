@@ -6,6 +6,8 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const TenantEntry: React.FC = () => {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -166,7 +168,13 @@ const TenantEntry: React.FC = () => {
               <TextField name="id_number" label="ID Number" value={formData.id_number} onChange={handleChange} fullWidth />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField name="id_expiry" label="ID Expiry" type="date" InputLabelProps={{ shrink: true }} value={formData.id_expiry} onChange={handleChange} fullWidth />
+              <DatePicker
+                label="ID Expiry"
+                format="DD/MM/YYYY"
+                value={formData.id_expiry ? dayjs(formData.id_expiry) : null}
+                onChange={(newValue) => setFormData({ ...formData, id_expiry: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{ textField: { fullWidth: true } }}
+              />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField name="nationality" label="Nationality" value={formData.nationality} onChange={handleChange} fullWidth />
@@ -175,7 +183,13 @@ const TenantEntry: React.FC = () => {
               <TextField name="passport_number" label="Passport Number" value={formData.passport_number} onChange={handleChange} fullWidth />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField name="passport_expiry_date" label="Passport Expiry" type="date" InputLabelProps={{ shrink: true }} value={formData.passport_expiry_date} onChange={handleChange} fullWidth />
+              <DatePicker
+                label="Passport Expiry"
+                format="DD/MM/YYYY"
+                value={formData.passport_expiry_date ? dayjs(formData.passport_expiry_date) : null}
+                onChange={(newValue) => setFormData({ ...formData, passport_expiry_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{ textField: { fullWidth: true } }}
+              />
             </Grid>
 
             <Grid item xs={12} sx={{ mt: 2 }}>

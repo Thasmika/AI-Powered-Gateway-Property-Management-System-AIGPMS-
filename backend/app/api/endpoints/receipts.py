@@ -38,10 +38,18 @@ def create_receipt(
             detail=f"Receipt total ({receipt_in.total_amount}) does not match sum of payment lines ({total_lines_sum})."
         )
         
-    # 1b. Validation: Receipt currency must match lease currency
+    # 1b. Validation & Population: Resolve from Lease
     lease = db.query(Lease).filter(Lease.lease_id == receipt_in.lease_id).first()
     if not lease:
         raise HTTPException(status_code=404, detail="Lease not found")
+        
+    if not receipt_in.tenant_id:
+        receipt_in.tenant_id = lease.tenant_id
+    if not receipt_in.property_id:
+        receipt_in.property_id = lease.property_id
+    if not receipt_in.unit_id:
+        receipt_in.unit_id = lease.unit_id
+        
     if lease.currency != receipt_in.currency:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

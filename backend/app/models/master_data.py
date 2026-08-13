@@ -7,6 +7,7 @@ No hardcoded values anywhere in the system — all reference data lives here.
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, Text, DateTime, Numeric, Integer
+from sqlalchemy.orm import relationship
 from app.database.session import Base
 
 
@@ -26,6 +27,10 @@ class MasterBank(Base):
     is_active = Column(Boolean, default=True)
     created_date = Column(DateTime, default=datetime.utcnow)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    legal_owners = relationship("LegalOwner", back_populates="bank")
+    beneficial_owners = relationship("BeneficialOwner", back_populates="bank")
 
 
 # ── 2. Communities / Locations ────────────────────────────────────────────────

@@ -16,6 +16,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import LeasePaymentSchedule from './LeasePaymentSchedule';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -235,8 +237,9 @@ const LeaseDetail: React.FC = () => {
                 <Paper elevation={0} sx={{ p: 2, background: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>
                   <Grid container spacing={2}>
                     <Grid item xs={6}><Typography color="text.secondary" variant="body2">Ejari Number</Typography><Typography color="white" fontWeight={500}>{currentVersion.ejari_number || '—'}</Typography></Grid>
+                    <Grid item xs={6}><Typography color="text.secondary" variant="body2">Premises No</Typography><Typography color="white" fontWeight={500}>{currentVersion.premises_no || '—'}</Typography></Grid>
                     <Grid item xs={6}><Typography color="text.secondary" variant="body2">Ref Number</Typography><Typography color="white" fontWeight={500}>{currentVersion.contract_reference || '—'}</Typography></Grid>
-                    <Grid item xs={12}><Typography color="text.secondary" variant="body2">Tenant ID</Typography><Typography color="white" fontWeight={500} sx={{ cursor: 'pointer', color: '#6366f1' }} onClick={() => navigate(`/tenants-leases/tenants/${lease.tenant_id}`)}>{lease.tenant_id}</Typography></Grid>
+                    <Grid item xs={6}><Typography color="text.secondary" variant="body2">Tenant ID</Typography><Typography color="white" fontWeight={500} sx={{ cursor: 'pointer', color: '#6366f1' }} onClick={() => navigate(`/tenants-leases/tenants/${lease.tenant_id}`)}>{lease.tenant_id}</Typography></Grid>
                   </Grid>
                 </Paper>
               </Grid>
@@ -334,8 +337,20 @@ const LeaseDetail: React.FC = () => {
         <DialogTitle>Renew Lease</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField label="New Start Date" type="date" InputLabelProps={{ shrink: true }} fullWidth value={renewForm.contract_start_date} onChange={(e) => setRenewForm({...renewForm, contract_start_date: e.target.value})} />
-            <TextField label="New End Date" type="date" InputLabelProps={{ shrink: true }} fullWidth value={renewForm.contract_end_date} onChange={(e) => setRenewForm({...renewForm, contract_end_date: e.target.value})} />
+            <DatePicker 
+              label="New Start Date" 
+              format="DD/MM/YYYY"
+              value={renewForm.contract_start_date ? dayjs(renewForm.contract_start_date) : null}
+              onChange={(newValue) => setRenewForm({...renewForm, contract_start_date: newValue ? newValue.format('YYYY-MM-DD') : ''})}
+              slotProps={{ textField: { fullWidth: true } }}
+            />
+            <DatePicker 
+              label="New End Date" 
+              format="DD/MM/YYYY"
+              value={renewForm.contract_end_date ? dayjs(renewForm.contract_end_date) : null}
+              onChange={(newValue) => setRenewForm({...renewForm, contract_end_date: newValue ? newValue.format('YYYY-MM-DD') : ''})}
+              slotProps={{ textField: { fullWidth: true } }}
+            />
             <TextField label="New Annual Rent" type="number" fullWidth value={renewForm.annual_rent} onChange={(e) => setRenewForm({...renewForm, annual_rent: e.target.value})} />
             <TextField label="Renewal Reason (Optional)" fullWidth value={renewForm.renewal_reason} onChange={(e) => setRenewForm({...renewForm, renewal_reason: e.target.value})} />
           </Box>

@@ -5,6 +5,8 @@ import {
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -91,7 +93,13 @@ const PropertyValuationEntry: React.FC = () => {
               <TextField name="market_value" label="Estimated Market Value (AED) *" type="number" value={formData.market_value} onChange={handleChange} fullWidth />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField name="valuation_date" label="Valuation Date *" type="date" value={formData.valuation_date} onChange={handleChange} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
+              <DatePicker
+                label="Valuation Date *"
+                format="DD/MM/YYYY"
+                value={formData.valuation_date ? dayjs(formData.valuation_date) : null}
+                onChange={(newValue) => setFormData({ ...formData, valuation_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{ textField: { fullWidth: true } }}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField name="valuation_source" label="Source" value={formData.valuation_source} onChange={handleChange} fullWidth select>

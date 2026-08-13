@@ -15,6 +15,7 @@ interface TitleDeed {
   title_deed_id: string;
   property_id: string;
   title_deed_number: string | null;
+  unit_number: string | null;
   ownership_status: string;
   legal_owner_id: string | null;
   loan_number: string | null;
@@ -38,7 +39,7 @@ const TitleDeedList: React.FC = () => {
     try {
       const [tdRes, ownersRes] = await Promise.all([
         fetch(`${API}/title-deeds`, { headers: authHeaders }),
-        fetch(`${API}/master/legal-owners`, { headers: authHeaders })
+        fetch(`${API}/ownership/legal-owners`, { headers: authHeaders })
       ]);
       if (!tdRes.ok) throw new Error('Failed to load title deeds');
       setTitleDeeds(await tdRes.json());
@@ -93,6 +94,7 @@ const TitleDeedList: React.FC = () => {
             <TableHead>
               <TableRow sx={{ '& th': { borderColor: 'rgba(255,255,255,0.06)', color: 'text.secondary', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' } }}>
                 <TableCell>Deed Number</TableCell>
+                <TableCell>Unit</TableCell>
                 <TableCell>Legal Owner</TableCell>
                 <TableCell>Loan Status</TableCell>
                 <TableCell>Status</TableCell>
@@ -111,6 +113,7 @@ const TitleDeedList: React.FC = () => {
                   return (
                     <TableRow key={td.title_deed_id} sx={{ '& td': { borderColor: 'rgba(255,255,255,0.04)' }, '&:hover': { background: 'rgba(255,255,255,0.02)' } }}>
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: 'white' }}>{td.title_deed_number || '—'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" sx={{ color: 'white' }}>{td.unit_number || '—'}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{ownerName}</Typography></TableCell>
                       <TableCell>
                         {td.loan_number ? (

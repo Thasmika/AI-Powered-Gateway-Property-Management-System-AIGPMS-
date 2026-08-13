@@ -5,7 +5,7 @@ import os
 from app.core.config import settings
 from app.database.session import engine, Base, SessionLocal
 from app.database.init_db import init_db
-from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership, tenants, leases, receipts, pdc_received, pdc_issued, alerts, upload
+from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership, tenants, leases, receipts, pdc_received, pdc_issued, alerts, upload, ai
 
 # ── Register ALL models with SQLAlchemy metadata ──────────────────────────────
 # This must happen BEFORE create_all() so every table is created on startup.
@@ -70,6 +70,7 @@ app.include_router(receipts.router, prefix=f"{settings.API_V1_STR}/rental-receip
 app.include_router(pdc_received.router, prefix=f"{settings.API_V1_STR}/pdc-received", tags=["PDC Received"])
 app.include_router(pdc_issued.router, prefix=f"{settings.API_V1_STR}/pdc-issued", tags=["PDC Issued"])
 app.include_router(alerts.router, prefix=f"{settings.API_V1_STR}/alerts", tags=["Alerts"])
+app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["AI Assistant"])
 # ── Health & Root ─────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 def read_root():

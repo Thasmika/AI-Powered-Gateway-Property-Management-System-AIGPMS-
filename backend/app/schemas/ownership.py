@@ -13,6 +13,9 @@ class LegalOwnerBase(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=30)
     address: Optional[str] = None
+    bank_id: Optional[str] = None
+    bank_account_name: Optional[str] = Field(None, max_length=200)
+    bank_account_number: Optional[str] = Field(None, max_length=100)
     status: Optional[str] = "Active"
 
 class LegalOwnerCreate(LegalOwnerBase):
@@ -28,6 +31,9 @@ class LegalOwnerUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=30)
     address: Optional[str] = None
+    bank_id: Optional[str] = None
+    bank_account_name: Optional[str] = Field(None, max_length=200)
+    bank_account_number: Optional[str] = Field(None, max_length=100)
     status: Optional[str] = None
 
 class LegalOwnerInDBBase(LegalOwnerBase):
@@ -52,6 +58,9 @@ class BeneficialOwnerBase(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=30)
     address: Optional[str] = None
+    bank_id: Optional[str] = None
+    bank_account_name: Optional[str] = Field(None, max_length=200)
+    bank_account_number: Optional[str] = Field(None, max_length=100)
     status: Optional[str] = "Active"
 
 class BeneficialOwnerCreate(BeneficialOwnerBase):
@@ -67,6 +76,9 @@ class BeneficialOwnerUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=30)
     address: Optional[str] = None
+    bank_id: Optional[str] = None
+    bank_account_name: Optional[str] = Field(None, max_length=200)
+    bank_account_number: Optional[str] = Field(None, max_length=100)
     status: Optional[str] = None
 
 class BeneficialOwnerInDBBase(BeneficialOwnerBase):

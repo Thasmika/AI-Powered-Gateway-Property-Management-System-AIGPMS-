@@ -14,7 +14,7 @@ interface ImageUploadProps {
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 import { getFileUrl } from '../services/api';
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSizeMB = 5 }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSizeMB = 50 }) => {
   const { token } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,18 +74,18 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSi
   const imageUrl = getFileUrl(value);
 
   return (
-    <Box sx={{ border: '1px dashed #ccc', borderRadius: 2, p: 2, textAlign: 'center', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <Box sx={{ border: '1px dashed #ccc', borderRadius: 2, p: 2, textAlign: 'center', position: 'relative', height: '100%', minHeight: 140, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
       <Typography variant="subtitle2" gutterBottom color="textSecondary" sx={{ mb: 1 }}>
         {label}
       </Typography>
       
       {imageUrl ? (
-        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+        <Box sx={{ position: 'relative', display: 'inline-block', mt: 'auto', mb: 'auto' }}>
           <Box
             component="img"
             src={imageUrl}
             alt={label}
-            sx={{ maxWidth: '100%', maxHeight: 150, borderRadius: 1, objectFit: 'cover' }}
+            sx={{ maxWidth: '100%', maxHeight: 100, borderRadius: 1, objectFit: 'cover' }}
           />
           <IconButton
             size="small"
@@ -97,7 +97,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSi
           </IconButton>
         </Box>
       ) : (
-        <Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
           <input
             type="file"
             accept="image/*"
@@ -115,7 +115,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, value, onChange, maxSi
             {uploading ? 'Uploading...' : 'Select'}
           </Button>
           {error && (
-            <Typography variant="caption" color="error" display="block" sx={{ mt: 1 }}>
+            <Typography variant="caption" color="error" display="block" sx={{ position: 'absolute', bottom: 8, left: 4, right: 4, lineHeight: 1.1 }}>
               {error}
             </Typography>
           )}
