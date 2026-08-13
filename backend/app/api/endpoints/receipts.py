@@ -28,7 +28,7 @@ def generate_pdc_reference(db: Session) -> str:
 def create_receipt(
     receipt_in: RentalReceiptCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["Accountant", "Managing Director"]))
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator", "Camp Supervisor"]))
 ):
     # 1. Validation: Sum of lines must equal header total
     total_lines_sum = sum(line.amount for line in receipt_in.payment_lines)
@@ -188,7 +188,7 @@ def get_receipt(
 def post_receipt(
     receipt_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["Accountant", "Managing Director"]))
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator", "Camp Supervisor"]))
 ):
     receipt = db.query(RentalReceipt).filter(RentalReceipt.receipt_id == receipt_id).first()
     if not receipt:
@@ -213,7 +213,7 @@ def post_receipt(
 def reverse_receipt(
     receipt_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["Managing Director"]))
+    current_user: User = Depends(require_roles(["Managing Director", "Administrator"]))
 ):
     receipt = db.query(RentalReceipt).filter(RentalReceipt.receipt_id == receipt_id).first()
     if not receipt:
