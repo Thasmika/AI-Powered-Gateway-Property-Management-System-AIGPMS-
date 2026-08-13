@@ -203,18 +203,22 @@ const ReceiptVoucherEntry: React.FC = () => {
                     {...params} 
                     label="Select Tenancy Contract" 
                     required 
+                    multiline
                     sx={{
                       ...tfSx,
                       '& .MuiOutlinedInput-root': {
                         ...tfSx['& .MuiOutlinedInput-root'],
                         minHeight: '80px', // Very large box area
-                        fontSize: '1.25rem', // Large font for the selection box
+                        fontSize: '1.1rem', 
+                        alignItems: 'flex-start',
+                        padding: '16px'
                       },
                       '& .MuiInputLabel-root': {
                         fontSize: '1.1rem', // Larger label
                       },
                       '& .MuiInputBase-input': {
-                        fontSize: '1.25rem', // Larger font for input text
+                        fontSize: '1.1rem', 
+                        lineHeight: 1.5
                       }
                     }}
                     placeholder="Search by tenant, property, or lease number..."
