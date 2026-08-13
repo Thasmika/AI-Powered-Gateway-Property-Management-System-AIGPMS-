@@ -20,6 +20,7 @@ interface Lease {
   lease_number: string;
   tenant_id: string;
   property_id: string;
+  unit_number?: string;
   lease_type: string;
   status: string;
   versions: any[];
@@ -213,8 +214,8 @@ const LeaseList: React.FC = () => {
             <TableHead>
               <TableRow sx={{ '& th': { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.06)', color: 'text.secondary', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 } }}>
                 <TableCell>Lease Number</TableCell>
+                <TableCell>Unit Number</TableCell>
                 <TableCell>Tenant</TableCell>
-                <TableCell>Property</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell align="center">Status</TableCell>
                 <TableCell align="center">Actions</TableCell>
@@ -226,38 +227,69 @@ const LeaseList: React.FC = () => {
               ) : filteredLeases.length === 0 ? (
                 <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>No tenancy contracts found.</TableCell></TableRow>
               ) : (
-                filteredLeases.map((lease) => {
-                  const statusColors = getStatusColor(lease.status);
-                  return (
-                    <TableRow key={lease.lease_id} sx={{ cursor: 'pointer', '& td': { borderColor: 'rgba(255,255,255,0.04)' }, '&:hover': { background: 'rgba(99,102,241,0.08)' } }} onClick={() => navigate(`/tenants-leases/leases/${lease.lease_id}`)}>
-                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: 'white' }}>{lease.lease_number}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{tenants[lease.tenant_id] || lease.tenant_id}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{properties[lease.property_id] || lease.property_id}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{lease.lease_type}</Typography></TableCell>
-                      <TableCell align="center">
-                        <Chip label={lease.status} size="small"
-                          sx={{ bgcolor: statusColors.bg, color: statusColors.text, fontWeight: 600, fontSize: '0.7rem' }} />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="View Details">
-                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}`); }} sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99,102,241,0.15)' } }}>
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}/edit`); }} sx={{ color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteClick(lease); }} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.15)' } }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
+                (() => {
+                  // Group by Property Name
+                  const groupedLeases: Record<string, Lease[]> = {};
+                  filteredLeases.forEach(lease => {
+                    const propName = properties[lease.property_id] || lease.property_id || 'Unknown Property';
+                    if (!groupedLeases[propName]) groupedLeases[propName] = [];
+                    groupedLeases[propName].push(lease);
+                  });
+
+                  const sortedProperties = Object.keys(groupedLeases).sort((a, b) => a.localeCompare(b));
+
+                  return sortedProperties.map((propName) => {
+                    const propLeases = groupedLeases[propName].sort((a, b) => {
+                      const unitA = (a.unit_number || '').toString();
+                      const unitB = (b.unit_number || '').toString();
+                      return unitA.localeCompare(unitB, undefined, { numeric: true });
+                    });
+
+                    return (
+                      <React.Fragment key={propName}>
+                        <TableRow sx={{ background: 'rgba(99,102,241,0.08)' }}>
+                          <TableCell colSpan={6} sx={{ py: 1.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              {propName}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                        {propLeases.map((lease) => {
+                          const statusColors = getStatusColor(lease.status);
+                          return (
+                            <TableRow key={lease.lease_id} sx={{ cursor: 'pointer', '& td': { borderColor: 'rgba(255,255,255,0.04)' }, '&:hover': { background: 'rgba(255,255,255,0.02)' } }} onClick={() => navigate(`/tenants-leases/leases/${lease.lease_id}`)}>
+                              <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: 'white' }}>{lease.lease_number}</Typography></TableCell>
+                              <TableCell><Typography variant="body2" color="text.secondary">{lease.unit_number || '—'}</Typography></TableCell>
+                              <TableCell><Typography variant="body2" color="text.secondary">{tenants[lease.tenant_id] || lease.tenant_id}</Typography></TableCell>
+                              <TableCell><Typography variant="body2" color="text.secondary">{lease.lease_type}</Typography></TableCell>
+                              <TableCell align="center">
+                                <Chip label={lease.status} size="small"
+                                  sx={{ bgcolor: statusColors.bg, color: statusColors.text, fontWeight: 600, fontSize: '0.7rem' }} />
+                              </TableCell>
+                              <TableCell align="center">
+                                <Tooltip title="View Details">
+                                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}`); }} sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99,102,241,0.15)' } }}>
+                                    <VisibilityIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Edit">
+                                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}/edit`); }} sx={{ color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}>
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete">
+                                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteClick(lease); }} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.15)' } }}>
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  });
+                })()
               )}
             </TableBody>
           </Table>
