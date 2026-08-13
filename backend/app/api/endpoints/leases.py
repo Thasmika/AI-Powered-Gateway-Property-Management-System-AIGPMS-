@@ -22,8 +22,8 @@ def list_leases(
     """
     List all leases with their versions.
     """
-    from app.models.property import Property
-    leases = db.query(Lease).join(Property, Lease.property_id == Property.property_id).order_by(Property.property_name.asc()).offset(skip).limit(limit).all()
+    from app.models.property import Property, PropertyUnit
+    leases = db.query(Lease).join(Property, Lease.property_id == Property.property_id).join(PropertyUnit, Lease.unit_id == PropertyUnit.unit_id).order_by(Property.property_name.asc(), PropertyUnit.unit_number.asc()).offset(skip).limit(limit).all()
     return leases
 
 @router.post("/", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)
