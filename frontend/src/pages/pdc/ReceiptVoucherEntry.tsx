@@ -175,7 +175,7 @@ const ReceiptVoucherEntry: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ p: 3, width: '100%', mx: 'auto' }}>
       <Typography variant="h4" fontWeight={700} color="white" gutterBottom>
         Create Receipt Voucher
       </Typography>
