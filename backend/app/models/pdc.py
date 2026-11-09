@@ -173,6 +173,15 @@ class PDCReceived(Base):
     replacement                 = relationship("ChequeReplacement", back_populates="original_pdc",
                                                foreign_keys="ChequeReplacement.original_pdc_id", cascade="all, delete-orphan")
     return_event                = relationship("ChequeReturn", back_populates="pdc_received", uselist=False, cascade="all, delete-orphan")
+    tenant                      = relationship("Tenant", foreign_keys=[tenant_id])
+
+    @property
+    def tenant_name(self):
+        return self.tenant.full_name if hasattr(self, 'tenant') and self.tenant else None
+
+    @property
+    def lease_number(self):
+        return self.lease.lease_number if hasattr(self, 'lease') and self.lease else None
 
 
 class PDCReceivedStatusHistory(Base):

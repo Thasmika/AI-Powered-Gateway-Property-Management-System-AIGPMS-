@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Chip, CircularProgress, Avatar, Alert, IconButton, Tooltip,
@@ -14,6 +15,8 @@ import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } 
 
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import dayjs from 'dayjs';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface Lease {
   lease_id: string;
@@ -35,7 +38,8 @@ const LeaseList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Active');
+  const [expirationFilter, setExpirationFilter] = useState('');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<Lease | null>(null);
@@ -100,25 +104,60 @@ const LeaseList: React.FC = () => {
     }
   };
 
+  // Compute effective status: if stored status is 'Active' but end date is in the past, treat as 'Expired'
+  const getEffectiveStatus = (lease: Lease): string => {
+    if (lease.status !== 'Active') return lease.status;
+    const currentVersion = lease.versions?.find((v: any) => v.is_current_version) || (lease.versions?.length ? lease.versions[lease.versions.length - 1] : null);
+    if (currentVersion?.contract_end_date) {
+      const endDate = dayjs(currentVersion.contract_end_date).startOf('day');
+      const today = dayjs().startOf('day');
+      if (endDate.isBefore(today)) return 'Expired';
+    }
+    return lease.status;
+  };
+
   // Filter leases
   const filteredLeases = leases.filter((lease) => {
     const matchesSearch = !search || 
       lease.lease_number?.toLowerCase().includes(search.toLowerCase()) ||
       (tenants[lease.tenant_id] || lease.tenant_id)?.toLowerCase().includes(search.toLowerCase()) ||
       (properties[lease.property_id] || lease.property_id)?.toLowerCase().includes(search.toLowerCase());
-      
-    const matchesStatus = !statusFilter || lease.status === statusFilter;
+
+    const effectiveStatus = getEffectiveStatus(lease);
+    const matchesStatus = !statusFilter || effectiveStatus === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    let matchesExpiration = true;
+    if (expirationFilter) {
+      const currentVersion = lease.versions?.find((v: any) => v.is_current_version) || (lease.versions?.length ? lease.versions[lease.versions.length - 1] : null);
+      if (currentVersion && currentVersion.contract_end_date) {
+        const endDate = dayjs(currentVersion.contract_end_date).startOf('day');
+        const today = dayjs().startOf('day');
+        const diffDays = endDate.diff(today, 'day');
+
+        if (expirationFilter === 'expired') {
+          matchesExpiration = diffDays < 0;
+        } else if (expirationFilter === '30_days') {
+          matchesExpiration = diffDays >= 0 && diffDays <= 30;
+        } else if (expirationFilter === '60_days') {
+          matchesExpiration = diffDays >= 0 && diffDays <= 60;
+        } else if (expirationFilter === '90_days') {
+          matchesExpiration = diffDays >= 0 && diffDays <= 90;
+        }
+      } else {
+        matchesExpiration = false;
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesExpiration;
   });
 
-  // KPI Stats
-  const byStatus = (s: string) => leases.filter(l => l.status === s).length;
+  // KPI Stats — use effective status so expired-by-date contracts are counted correctly
+  const byEffectiveStatus = (s: string) => leases.filter(l => getEffectiveStatus(l) === s).length;
   const kpis = [
     { label: 'Total Contracts', value: leases.length, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
-    { label: 'Active', value: byStatus('Active'), color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    { label: 'Expired', value: byStatus('Expired'), color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
-    { label: 'Terminated', value: byStatus('Terminated'), color: '#64748b', bg: 'rgba(100,116,139,0.15)' },
+    { label: 'Active', value: byEffectiveStatus('Active'), color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    { label: 'Expired', value: byEffectiveStatus('Expired'), color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+    { label: 'Terminated', value: byEffectiveStatus('Terminated'), color: '#64748b', bg: 'rgba(100,116,139,0.15)' },
   ];
 
   return (
@@ -139,10 +178,13 @@ const LeaseList: React.FC = () => {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/tenants-leases/leases/new')}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <PdfExportButton title="Tenancy Contracts Register" />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/tenants-leases/leases/new')}
             sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
             Add Lease
           </Button>
+          </Box>
         </Stack>
       </Stack>
 
@@ -203,6 +245,23 @@ const LeaseList: React.FC = () => {
             <MenuItem value="Terminated">Terminated</MenuItem>
           </Select>
         </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel>Expiration Timeline</InputLabel>
+          <Select
+            value={expirationFilter}
+            label="Expiration Timeline"
+            onChange={(e) => setExpirationFilter(e.target.value)}
+            sx={{ borderRadius: 2 }}
+          >
+            <MenuItem value="">All Expirations</MenuItem>
+            <MenuItem value="expired">Expired</MenuItem>
+            <MenuItem value="30_days">Expiring within 30 Days</MenuItem>
+            <MenuItem value="60_days">Expiring within 60 Days</MenuItem>
+            <MenuItem value="90_days">Expiring within 90 Days</MenuItem>
+          </Select>
+        </FormControl>
+
         <Typography variant="body2" color="text.secondary" ml="auto !important">
           Showing {filteredLeases.length} of {leases.length} contracts
         </Typography>
@@ -214,82 +273,63 @@ const LeaseList: React.FC = () => {
             <TableHead>
               <TableRow sx={{ '& th': { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.06)', color: 'text.secondary', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 } }}>
                 <TableCell>Lease Number</TableCell>
+                <TableCell>Unit Name</TableCell>
                 <TableCell>Unit Number</TableCell>
                 <TableCell>Tenant</TableCell>
-                <TableCell>Type</TableCell>
+                <TableCell>Expiry Date</TableCell>
                 <TableCell align="center">Status</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}><CircularProgress size={32} /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6 }}><CircularProgress size={32} /></TableCell></TableRow>
               ) : filteredLeases.length === 0 ? (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>No tenancy contracts found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>No tenancy contracts found.</TableCell></TableRow>
               ) : (
-                (() => {
-                  // Group by Property Name
-                  const groupedLeases: Record<string, Lease[]> = {};
-                  filteredLeases.forEach(lease => {
-                    const propName = properties[lease.property_id] || lease.property_id || 'Unknown Property';
-                    if (!groupedLeases[propName]) groupedLeases[propName] = [];
-                    groupedLeases[propName].push(lease);
-                  });
-
-                  const sortedProperties = Object.keys(groupedLeases).sort((a, b) => a.localeCompare(b));
-
-                  return sortedProperties.map((propName) => {
-                    const propLeases = groupedLeases[propName].sort((a, b) => {
-                      const unitA = (a.unit_number || '').toString();
-                      const unitB = (b.unit_number || '').toString();
-                      return unitA.localeCompare(unitB, undefined, { numeric: true });
-                    });
-
-                    return (
-                      <React.Fragment key={propName}>
-                        <TableRow sx={{ background: 'rgba(99,102,241,0.08)' }}>
-                          <TableCell colSpan={6} sx={{ py: 1.5 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                              {propName}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                        {propLeases.map((lease) => {
-                          const statusColors = getStatusColor(lease.status);
-                          return (
-                            <TableRow key={lease.lease_id} sx={{ cursor: 'pointer', '& td': { borderColor: 'rgba(255,255,255,0.04)' }, '&:hover': { background: 'rgba(255,255,255,0.02)' } }} onClick={() => navigate(`/tenants-leases/leases/${lease.lease_id}`)}>
-                              <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: 'white' }}>{lease.lease_number}</Typography></TableCell>
-                              <TableCell><Typography variant="body2" color="text.secondary">{lease.unit_number || '—'}</Typography></TableCell>
-                              <TableCell><Typography variant="body2" color="text.secondary">{tenants[lease.tenant_id] || lease.tenant_id}</Typography></TableCell>
-                              <TableCell><Typography variant="body2" color="text.secondary">{lease.lease_type}</Typography></TableCell>
-                              <TableCell align="center">
-                                <Chip label={lease.status} size="small"
-                                  sx={{ bgcolor: statusColors.bg, color: statusColors.text, fontWeight: 600, fontSize: '0.7rem' }} />
-                              </TableCell>
-                              <TableCell align="center">
-                                <Tooltip title="View Details">
-                                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}`); }} sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99,102,241,0.15)' } }}>
-                                    <VisibilityIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Edit">
-                                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}/edit`); }} sx={{ color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}>
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Delete">
-                                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteClick(lease); }} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.15)' } }}>
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  });
-                })()
+                [...filteredLeases].sort((a, b) => {
+                  const aVersion = a.versions?.find((v: any) => v.is_current_version) || (a.versions?.length ? a.versions[a.versions.length - 1] : null);
+                  const bVersion = b.versions?.find((v: any) => v.is_current_version) || (b.versions?.length ? b.versions[b.versions.length - 1] : null);
+                  const aDate = aVersion?.contract_end_date ? new Date(aVersion.contract_end_date).getTime() : 0;
+                  const bDate = bVersion?.contract_end_date ? new Date(bVersion.contract_end_date).getTime() : 0;
+                  return aDate - bDate;
+                }).map((lease) => {
+                  const effectiveStatus = getEffectiveStatus(lease);
+                  const statusColors = getStatusColor(effectiveStatus);
+                  const propName = properties[lease.property_id] || lease.property_id || 'Unknown Property';
+                  const currentVersion = lease.versions?.find((v: any) => v.is_current_version) || (lease.versions?.length ? lease.versions[lease.versions.length - 1] : null);
+                  const expiryDate = formatDate(currentVersion?.contract_end_date);
+                  
+                  return (
+                    <TableRow key={lease.lease_id} sx={{ cursor: 'pointer', '& td': { borderColor: 'rgba(255,255,255,0.04)' }, '&:hover': { background: 'rgba(255,255,255,0.02)' } }} onClick={() => navigate(`/tenants-leases/leases/${lease.lease_id}`)}>
+                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: 'white' }}>{lease.lease_number}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{propName}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{lease.unit_number || '—'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{tenants[lease.tenant_id] || lease.tenant_id}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{expiryDate}</Typography></TableCell>
+                      <TableCell align="center">
+                        <Chip label={effectiveStatus} size="small" sx={{ bgcolor: statusColors.bg, color: statusColors.text, fontWeight: 600, fontSize: '0.7rem' }} />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="View Details">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}`); }} sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99,102,241,0.15)' } }}>
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/tenants-leases/leases/${lease.lease_id}/edit`); }} sx={{ color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteClick(lease); }} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239,68,68,0.15)' } }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -5,12 +5,9 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:80
 export const getFileUrl = (filePath: string | null | undefined): string => {
   if (!filePath) return '';
   if (filePath.startsWith('http')) return filePath;
-  const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
-  let cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-  if (!cleanPath.startsWith('/uploads')) {
-    cleanPath = `/uploads${cleanPath}`;
-  }
-  return `${base}${cleanPath}`;
+  const apiBase = API_BASE_URL.replace(/\/$/, '');
+  const filename = filePath.split('/').pop();
+  return `${apiBase}/uploads/${filename}`;
 };
 
 const api = axios.create({
@@ -43,9 +40,9 @@ api.interceptors.response.use(
       localStorage.removeItem('aigpms_role');
       localStorage.removeItem('aigpms_user');
       // If we are not already on the login page, redirect
-      if (!window.location.pathname.endsWith('/login')) {
-        window.location.href = '/login';
-      }
+      // if (!window.location.pathname.endsWith('/login')) {
+      //   window.location.href = '/login';
+      // }
     }
     return Promise.reject(error);
   }

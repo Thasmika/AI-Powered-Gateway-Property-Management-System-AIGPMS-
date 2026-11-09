@@ -11,6 +11,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import CategoryIcon from '@mui/icons-material/Category';
 import { useAuth } from '../../context/AuthContext';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface ExpenseCategory {
   category_id: string;
@@ -105,10 +106,13 @@ const ExpenseCategoryMaster: React.FC = () => {
             <ToggleButton value="General">General</ToggleButton>
             <ToggleButton value="Property">Property</ToggleButton>
           </ToggleButtonGroup>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <PdfExportButton title="Expense Categories" />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
             sx={{ bgcolor: '#f59e0b', color: '#000', '&:hover': { bgcolor: '#d97706' } }}>
             Add Category
           </Button>
+          </Box>
         </Box>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

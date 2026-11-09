@@ -19,6 +19,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { formatDate } from '../../utils/dateUtils';
 import dayjs from 'dayjs';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,12 +107,10 @@ function expiryStatus(expiryDate: string | null): null | 'warn' | 'expired' {
   return null;
 }
 
-function formatDate(iso: string | null) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+// formatDate imported from ../../utils/dateUtils — UAE dd/MM/yyyy
 
 import { getFileUrl } from '../../services/api';
+import PdfExportButton from '../../components/PdfExportButton';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -298,6 +297,7 @@ const TenantDetail: React.FC = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <PdfExportButton />
           <Button
             variant="outlined"
             startIcon={<EditIcon />}
@@ -378,9 +378,9 @@ const TenantDetail: React.FC = () => {
                 <Grid container spacing={2}>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Type</Typography><Typography color="white" fontWeight={500}>{tenant.id_type || '—'}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Number</Typography><Typography color="white" fontWeight={500}>{tenant.id_number || '—'}</Typography></Grid>
-                  <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Expiry</Typography><Typography color="white" fontWeight={500}>{tenant.id_expiry ? new Date(tenant.id_expiry).toLocaleDateString() : '—'}</Typography></Grid>
+                  <Grid item xs={3}><Typography color="text.secondary" variant="body2">ID Expiry</Typography><Typography color="white" fontWeight={500}>{formatDate(tenant.id_expiry)}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">Passport Number</Typography><Typography color="white" fontWeight={500}>{tenant.passport_number || '—'}</Typography></Grid>
-                  <Grid item xs={3}><Typography color="text.secondary" variant="body2">Passport Expiry</Typography><Typography color="white" fontWeight={500}>{tenant.passport_expiry_date ? new Date(tenant.passport_expiry_date).toLocaleDateString() : '—'}</Typography></Grid>
+                  <Grid item xs={3}><Typography color="text.secondary" variant="body2">Passport Expiry</Typography><Typography color="white" fontWeight={500}>{formatDate(tenant.passport_expiry_date)}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">Employer</Typography><Typography color="white" fontWeight={500}>{tenant.employer || '—'}</Typography></Grid>
                   <Grid item xs={3}><Typography color="text.secondary" variant="body2">Emergency Contact</Typography><Typography color="white" fontWeight={500}>{tenant.emergency_contact || '—'}</Typography></Grid>
                   <Grid item xs={12}><Typography color="text.secondary" variant="body2">Notes</Typography><Typography color="white" fontWeight={500}>{tenant.notes || '—'}</Typography></Grid>

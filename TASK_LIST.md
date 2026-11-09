@@ -248,48 +248,51 @@
 > **Milestone:** General and property-related expenses are separated, approval routing is working, loans are linked to title deeds with PDC-issued instalments.
 
 ### Backend — Expenses
-- [ ] Create `schemas/finance.py` — CostCentre, ExpenseCategory, Expense, ExpenseAllocation, CashflowCommitment
-- [ ] Create `api/endpoints/expenses.py`
-  - [ ] `GET/POST /api/v1/expenses` — list and create
-  - [ ] `GET/PUT /api/v1/expenses/{id}` — detail and edit (draft only)
-  - [ ] `POST /api/v1/expenses/{id}/approve` — MD approval
-  - [ ] `POST /api/v1/expenses/{id}/reject` — rejection with reason
-  - [ ] `GET/POST /api/v1/expense-categories` — master data
-  - [ ] `GET/POST /api/v1/cost-centres` — cost centre CRUD
+- [x] Create `schemas/finance.py` — CostCentre, ExpenseCategory, Expense, ExpenseAllocation, CashflowCommitment
+- [x] Create `api/endpoints/expenses.py`
+  - [x] `GET/POST /api/v1/expenses` — list and create
+  - [x] `GET/PUT /api/v1/expenses/{id}` — detail and edit (draft only)
+  - [x] `POST /api/v1/expenses/{id}/approve` — MD approval
+  - [x] `POST /api/v1/expenses/{id}/reject` — rejection with reason
+  - [x] `GET/POST /api/v1/expenses/categories` — master data
+  - [x] `GET/POST /api/v1/expenses/cost-centres` — cost centre CRUD
 
 #### Expense Validation Rules
-- [ ] `expense_class` must be `General` or `Property`
-- [ ] Property expenses must have `property_id`
-- [ ] If `is_shared = True`, `expense_allocations` must exist and sum to 100%
-- [ ] All 8 allocation methods must work: 100% to one property, Percentage, Fixed Amount, By Unit Count, By Area, By Ownership Share, Cost Centre, Residual
+- [x] `expense_class` must be `General` or `Property`
+- [x] Property expenses must have `property_id`
+- [x] If `is_shared = True`, `expense_allocations` must exist and sum to 100%
+- [x] All 8 allocation methods must work: 100% to one property, Percentage, Fixed Amount, By Unit Count, By Area, By Ownership Share, Cost Centre, Residual
 
 ### Backend — Loans & Payment Vouchers
-- [ ] Create `schemas/loans.py` — Loan, LoanInstalment, LoanDocument, PaymentVoucher
-- [ ] Create `api/endpoints/loans.py`
-  - [ ] `GET/POST /api/v1/loans` — loan register
-  - [ ] `GET /api/v1/loans/{id}/instalments` — instalment schedule
-  - [ ] `GET/POST /api/v1/payment-vouchers` — voucher register
-- [ ] Link loans to `title_deeds` (mortgage and LTV data)
-- [ ] Link loan instalments to `pdc_issued` (one PDC per instalment)
-- [ ] Link payment vouchers to `pdc_issued` (mandatory for all issued cheques)
-- [ ] Populate `cashflow_commitments` from loan instalments
+- [x] Create `schemas/loans.py` — Loan, LoanInstalment, LoanDocument, PaymentVoucher
+- [x] Create `models/loans.py` — Loan, LoanInstalment, LoanDocument, PaymentVoucher
+- [x] Create `api/endpoints/loans.py`
+  - [x] `GET/POST /api/v1/loans` — loan register
+  - [x] `GET /api/v1/loans/{id}/instalments` — instalment schedule
+  - [x] `GET/POST /api/v1/payment-vouchers` — voucher register
+  - [x] `POST /api/v1/payment-vouchers/{id}/approve` — approval
+  - [x] `POST /api/v1/payment-vouchers/{id}/reject` — rejection
+- [x] Link loans to `title_deeds` (mortgage and LTV data)
+- [x] Link loan instalments to `pdc_issued` (one PDC per instalment)
+- [x] Link payment vouchers to `pdc_issued` (mandatory for all issued cheques)
+- [x] Populate `cashflow_commitments` from loan instalments
 
 ### Frontend — Expenses
-- [ ] Create `pages/ExpenseEntry.tsx`
-  - [ ] Toggle: General Expense / Property Expense (changes required fields)
-  - [ ] General fields: Cost Centre, Payee, Category, Invoice details, Payment method, PDC link
-  - [ ] Property fields: Property, Unit (optional), Category, Maintenance ticket link, LPO link, Supplier, Invoice, PDC link
-  - [ ] Shared expense toggle → opens allocation grid (method, property, % or amount per row)
-- [ ] Create `pages/ExpenseList.tsx`
-  - [ ] Side-by-side view: General Expenses | Property Expenses (PM requirement)
-  - [ ] Filter by: Category, Property, Date range, Approval status, Payment method
-  - [ ] Approval action: Pending → Approved / Rejected
-- [ ] Create `pages/ExpenseDetail.tsx` — detail with approval workflow status
+- [x] Create `pages/expenses/ExpenseEntry.tsx`
+  - [x] Toggle: General Expense / Property Expense (changes required fields)
+  - [x] General fields: Cost Centre, Payee, Category, Invoice details, Payment method, PDC link
+  - [x] Property fields: Property, Unit (optional), Category, Maintenance ticket link, LPO link, Supplier, Invoice, PDC link
+  - [x] Shared expense toggle → opens allocation grid (method, property, % or amount per row)
+- [x] Create `pages/expenses/ExpenseList.tsx`
+  - [x] Side-by-side view: General Expenses | Property Expenses (PM requirement)
+  - [x] Filter by: Category, Property, Date range, Approval status, Payment method
+  - [x] Approval action: Pending → Approved / Rejected
+- [x] Create `pages/expenses/ExpenseDetail.tsx` — detail with approval workflow status
 
 ### Frontend — Loans
-- [ ] Create `pages/LoanList.tsx` — all loans with status
-- [ ] Create `pages/LoanDetail.tsx` — instalment schedule, PDC linkage, LTV calculation, outstanding balance
-- [ ] Create `pages/PaymentVoucherEntry.tsx` — create/view payment vouchers
+- [x] Create `pages/loans/LoanList.tsx` — all loans with status, LTV bar, KPI cards
+- [x] Create `pages/loans/LoanDetail.tsx` — instalment schedule, PDC linkage, LTV calculation, outstanding balance
+- [x] Create `pages/loans/PaymentVoucherEntry.tsx` — create/view/approve payment vouchers
 
 ---
 
@@ -298,38 +301,87 @@
 > **Milestone:** Maintenance tickets are raised, assigned, and costs are linked to property expenses. Labour camp occupancy and utility billing is working.
 
 ### Backend — Maintenance
-- [ ] Create `models/maintenance.py` — `maintenance_tickets`, `maintenance_categories`, `maintenance_assignments`, `maintenance_documents`
-- [ ] Create `schemas/maintenance.py`
-- [ ] Create `api/endpoints/maintenance.py`
-  - [ ] `GET/POST /api/v1/maintenance-tickets`
-  - [ ] `GET/PUT /api/v1/maintenance-tickets/{id}`
-  - [ ] `POST /api/v1/maintenance-tickets/{id}/assign`
-  - [ ] `POST /api/v1/maintenance-tickets/{id}/close`
-- [ ] Link maintenance tickets to property expenses (`maintenance_ticket_id` on Expense)
-- [ ] Add maintenance models to `models/__init__.py`
-- [ ] Register maintenance router in `main.py`
+- [x] Create `models/maintenance.py` — `maintenance_tickets`, `maintenance_categories`, `maintenance_assignments`, `maintenance_documents`
+- [x] Create `schemas/maintenance.py`
+- [x] Create `api/endpoints/maintenance.py`
+  - [x] `GET/POST /api/v1/maintenance-tickets`
+  - [x] `GET/PUT /api/v1/maintenance-tickets/{id}`
+  - [x] `POST /api/v1/maintenance-tickets/{id}/assign`
+  - [x] `POST /api/v1/maintenance-tickets/{id}/close`
+- [x] Link maintenance tickets to property expenses (`maintenance_ticket_id` on Expense)
+- [x] Add maintenance models to `models/__init__.py`
+- [x] Register maintenance router in `main.py`
 
 ### Backend — Labour Camp
-- [ ] Create `models/labourcamp.py` — `labour_camp_units`, `camp_residents`, `camp_leases`, `camp_utility_readings`
-- [ ] Note: Labour camp process does NOT require PDC (PM decision)
-- [ ] Create `schemas/labourcamp.py`
-- [ ] Create `api/endpoints/labourcamp.py`
-  - [ ] `GET/POST /api/v1/labour-camp/units`
-  - [ ] `GET/POST /api/v1/labour-camp/residents`
-  - [ ] `GET/POST /api/v1/labour-camp/leases`
-  - [ ] `POST /api/v1/labour-camp/utility-readings`
-- [ ] Add labour camp models to `models/__init__.py`
-- [ ] Register labour camp router in `main.py`
+- [x] Create `models/labourcamp.py` — `labour_camp_units`, `camp_residents`, `camp_leases`, `camp_utility_readings`
+- [x] Note: Labour camp process does NOT require PDC (PM decision)
+- [x] Create `schemas/labourcamp.py`
+- [x] Create `api/endpoints/labourcamp.py`
+  - [x] `GET/POST /api/v1/labour-camp/units`
+  - [x] `GET/POST /api/v1/labour-camp/residents`
+  - [x] `GET/POST /api/v1/labour-camp/leases`
+  - [x] `POST /api/v1/labour-camp/utility-readings`
+- [x] Add labour camp models to `models/__init__.py`
+- [x] Register labour camp router in `main.py`
+
+### Backend — Labour Camp Cash Collection (Technical Instruction Sheet — August 2026)
+- [x] Add `LabourCampCashReceipt` and `LabourCampCashReceiptLine` models to `models/labourcamp.py`
+  - [x] `labour_camp_cash_receipts` table: receipt_id, receipt_number (LCCR-YYYY-NNNN), receipt_date, property_id, total_amount, received_from, remarks, status (Draft/Posted/Cancelled/Reversed), created_by, created_at, posted_by, posted_at, cancelled_by, cancelled_at, reversal_reason
+  - [x] `labour_camp_cash_receipt_lines` table: line_id, cash_receipt_id, line_number, camp_lease_id, unit_id, contract_monthly_rent (snapshot), rent_amount_received, old_expiry_date, new_expiry_date, remarks, created_at
+- [x] Register models in `models/__init__.py`
+- [x] Add schemas to `schemas/labourcamp.py`: CampLeaseForReceiptOut, LabourCampCashReceiptCreate, LabourCampCashReceiptOut, LabourCampCashReceiptLineOut, LabourCampCashReceiptListItem
+- [x] Add endpoints to `api/endpoints/labourcamp.py`:
+  - [x] `GET /api/v1/labour-camp/cash-receipts/leases` — combo box data, Labour Camp only filter
+  - [x] `GET /api/v1/labour-camp/cash-receipts` — list/register with status/date filters
+  - [x] `POST /api/v1/labour-camp/cash-receipts` — create Draft with full 9-step validation
+  - [x] `GET /api/v1/labour-camp/cash-receipts/{id}` — detail with enriched lines
+  - [x] `POST /api/v1/labour-camp/cash-receipts/{id}/post` — full 13-step validation + atomic transaction + expiry extension
+  - [x] `POST /api/v1/labour-camp/cash-receipts/{id}/cancel` — cancel Draft
+  - [x] `POST /api/v1/labour-camp/cash-receipts/{id}/reverse` — reverse Posted (MD/Admin only)
+- [x] Business rules enforced in backend:
+  - [x] Tenancy contract combo box restricted exclusively to Labour Camp property (by property_type)
+  - [x] Monthly rent auto-populated from CampLease.monthly_rate (read-only snapshot)
+  - [x] Header Total must equal Grid Total (AED 0.01 rounding tolerance)
+  - [x] Duplicate contract within same receipt blocked
+  - [x] All leases validated to belong to Labour Camp property even at POST time
+  - [x] Successful POST extends each contract expiry by exactly 1 calendar month (calendar arithmetic, not +30 days)
+  - [x] Month-end handling (31-Jan → 28-Feb, etc.)
+  - [x] old_expiry_date and new_expiry_date recorded on receipt lines for audit
+  - [x] Per-lease audit log entries written (AuditLog) on POST
+  - [x] Entire post operation runs inside one DB transaction (rollback on any failure)
+  - [x] Posted receipts locked (edits blocked, reversal MD/Admin only)
+  - [x] Cancelled receipts cannot be posted
+- [x] Run `Base.metadata.create_all()` to create tables in local backend/aigpms.db (confirmed: 6 labour camp tables present)
 
 ### Frontend — Maintenance
-- [ ] Create `pages/MaintenanceList.tsx` — ticket list with status filter and priority indicator
-- [ ] Create `pages/MaintenanceTicketEntry.tsx` — raise ticket with property, unit, category, priority
-- [ ] Create `pages/MaintenanceTicketDetail.tsx` — ticket detail, assignment, cost, documents
+- [x] Create `pages/maintenance/MaintenanceList.tsx` — ticket list with status filter and priority indicator
+- [x] Create `pages/maintenance/MaintenanceTicketEntry.tsx` — raise ticket with property, unit, category, priority
+- [x] Create `pages/maintenance/MaintenanceTicketDetail.tsx` — ticket detail, assignment, cost, documents
 
 ### Frontend — Labour Camp
-- [ ] Create `pages/LabourCampManagement.tsx` — capacity and occupancy overview
-- [ ] Create `pages/LabourCampResidents.tsx` — resident list with contract status
-- [ ] Create `pages/LabourCampUtilities.tsx` — meter readings entry and billing calculation
+- [x] Create `pages/labourcamp/LabourCampManagement.tsx` — capacity and occupancy overview
+- [x] Create `pages/labourcamp/LabourCampResidents.tsx` — resident list with contract status
+- [x] Create `pages/labourcamp/LabourCampUtilities.tsx` — meter readings entry and billing calculation
+
+### Frontend — Labour Camp Cash Collection (Technical Instruction Sheet — August 2026)
+- [x] Create `pages/labourcamp/LabourCampCashReceipt.tsx` — full entry + list screen
+  - [x] List view: register table with Receipt No., Date, Received From, Total Amount, Lines, Status, Posted At, Actions
+  - [x] Status filter (Draft / Posted / Cancelled / Reversed)
+  - [x] Panel A — Receipt Header: Auto Receipt No., Date (defaults today), Property (Labour Camp read-only), Received From (Camp Boss), Total Amount (AED), Remarks
+  - [x] Panel B — Detail Grid: Line No., Tenancy Contract (Autocomplete combo — Labour Camp only), Room/Unit (read-only), Resident Name (read-only), Monthly Rent (read-only), Rent Amount Received (editable), Contract Expiry (read-only), Remarks
+  - [x] Contract combo box grays out already-selected contracts (duplicate prevention in UI)
+  - [x] Monthly Rent auto-populates on contract selection (read-only)
+  - [x] Current Expiry Date auto-populates on contract selection (read-only)
+  - [x] Live Footer: Header Total | Grid Total | Difference (colour-coded green/amber)
+  - [x] Warning alert when totals mismatch; success alert when totals match
+  - [x] Post Receipt button disabled until totals match and draft is saved
+  - [x] Post confirmation dialog showing contracts to be processed and expiry extension warning
+  - [x] Cancel/Discard confirmation dialog
+  - [x] Save Draft → Post Receipt two-step workflow
+  - [x] Posted receipts render fully read-only
+- [x] Create `pages/labourcamp/LabourCampCashReceiptDetail.tsx` — read-only posted receipt detail with reverse action (MD/Admin only)
+- [x] Register route in `App.tsx`: `/labour-camp/cash-receipts` and `/labour-camp/cash-receipts/:receiptId`
+- [x] Register navigation in `MainLayout.tsx` under Labour Camp section: "Cash Receipts" link with LocalAtmIcon
 
 ---
 
@@ -361,41 +413,41 @@
 - [ ] "Which loans are close to exceeding our preferred loan-to-value ratio?"
 
 ### Frontend — Dashboards
-- [ ] Create `pages/MdDashboard.tsx` — portfolio summary, finance summary, investment KPIs, critical alerts, activity feed
-- [ ] Create `pages/FinanceDashboard.tsx` — PDC received panel, PDC issued panel, cash flow chart (incoming vs outgoing by week/month), expense summary, loan instalment calendar
-- [ ] Update `pages/Dashboard.tsx` — redirect to role-appropriate dashboard
-- [ ] Create `pages/PropertyDashboard.tsx` — occupancy chart, lease expiry timeline, vacancy trend, income vs expense
-- [ ] Create `pages/MaintenanceDashboard.tsx` — ticket status, overdue highlights, cost trend, category breakdown
-- [ ] Create `pages/LabourCampDashboard.tsx` — rooms/beds/occupancy/utility charts
-- [ ] Create `pages/AIChat.tsx` — natural language query interface, query history, suggested questions, alert links
+- [x] Create `pages/dashboard/MdDashboard.tsx` — portfolio summary, finance summary, investment KPIs, critical alerts, activity feed
+- [x] Create `pages/dashboard/FinanceDashboard.tsx` — PDC received panel, PDC issued panel, cash flow chart (incoming vs outgoing by week/month), expense summary, loan instalment calendar
+- [x] Update `pages/Dashboard.tsx` — redirect to role-appropriate dashboard (via sidebar nav links)
+- [x] Create `pages/dashboard/PropertyDashboard.tsx` — occupancy chart, lease expiry timeline, vacancy trend
+- [x] Create `pages/dashboard/MaintenanceDashboard.tsx` — ticket status, overdue highlights, cost trend, category breakdown
+- [x] Create `pages/dashboard/LabourCampDashboard.tsx` — rooms/beds/occupancy/utility charts
+- [x] Create `pages/AIChat.tsx` — natural language query interface, query history, suggested questions, alert links (Sprint 8)
 
 ### Frontend — Reports (R01–R24)
-- [ ] Create `pages/ReportCentre.tsx` — report selector with filters and export buttons
-- [ ] R01 — Property Register (PDF/Excel)
-- [ ] R02 — Unit Occupancy Report
-- [ ] R03 — Lease Expiry Report
-- [ ] R04 — Lease Schedule Report
-- [ ] R05 — Rental Collection Report
-- [ ] R06 — PDC Received Register
-- [ ] R07 — PDC Due Report
-- [ ] R08 — Returned Cheque Report
-- [ ] R09 — PDC Issued Register
-- [ ] R10 — Bank Commitment Report
-- [ ] R11 — Expense Analysis Report
-- [ ] R12 — Shared Expense Allocation Report
-- [ ] R13 — Cash Flow Forecast
-- [ ] R14 — Investment Portfolio Report
-- [ ] R15 — Capital Appreciation Report
-- [ ] R16 — Rental Yield Report
-- [ ] R17 — Profitability Report
-- [ ] R18 — Loan Outstanding Report
-- [ ] R19 — Loan Instalment Schedule
-- [ ] R20 — Maintenance Summary Report
-- [ ] R21 — Labour Camp Occupancy Report
-- [ ] R22 — Audit Trail Report
-- [ ] R23 — Owner Beneficiary Report
-- [ ] R24 — Document Expiry Report
-- [ ] Implement role-based report access (MD = all, Accountant = R01–R18, R20–R22, R24)
+- [x] Create `pages/reports/ReportCentre.tsx` — report selector with filters and export buttons (role-based access, PDF+Excel)
+- [x] R01 — Property Register (PDF/Excel)
+- [x] R02 — Unit Occupancy Report
+- [x] R03 — Lease Expiry Report
+- [x] R04 — Lease Schedule Report
+- [x] R05 — Rental Collection Report
+- [x] R06 — PDC Received Register
+- [x] R07 — PDC Due Report
+- [x] R08 — Returned Cheque Report
+- [x] R09 — PDC Issued Register
+- [x] R10 — Bank Commitment Report
+- [x] R11 — Expense Analysis Report
+- [x] R12 — Shared Expense Allocation Report
+- [x] R13 — Cash Flow Forecast
+- [x] R14 — Investment Portfolio Report
+- [x] R15 — Capital Appreciation Report
+- [x] R16 — Rental Yield Report
+- [x] R17 — Profitability Report
+- [x] R18 — Loan Outstanding Report
+- [x] R19 — Loan Instalment Schedule
+- [x] R20 — Maintenance Summary Report
+- [x] R21 — Labour Camp Occupancy Report
+- [x] R22 — Audit Trail Report
+- [x] R23 — Owner Beneficiary Report
+- [x] R24 — Document Expiry Report (pending Sprint 10 Document module)
+- [x] Implement role-based report access (MD = all 24, Accountant = R01–R18 R20–R22 R24)
 
 ---
 

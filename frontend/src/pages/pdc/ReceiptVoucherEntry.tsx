@@ -146,19 +146,26 @@ const ReceiptVoucherEntry: React.FC = () => {
     setError('');
 
     if (!selectedLease || !selectedLease.current_version) {
-      setError("Please select a valid Tenancy Contract.");
+      setError('Please select a valid Tenancy Contract.');
+      return;
+    }
+
+    if (lines.length === 0) {
+      setError('Please add at least one payment instrument.');
       return;
     }
 
     const calculatedTotal = lines.reduce((sum, line) => sum + Number(line.amount), 0);
-    if (Math.abs(calculatedTotal - Number(formData.total_amount)) > 0.01) {
-      setError(`Receipt total (${formData.total_amount}) does not match sum of lines (${calculatedTotal})`);
+    if (calculatedTotal <= 0) {
+      setError('Total amount must be greater than zero.');
       return;
     }
 
     try {
+      const calculatedTotal = lines.reduce((sum, line) => sum + Number(line.amount), 0);
       const payload = {
         ...formData,
+        total_amount: calculatedTotal,   // always use lines sum as the authoritative total
         lease_id: selectedLease.lease_id,
         lease_version_id: selectedLease.current_version.version_id,
         payment_lines: lines.map(line => ({
@@ -189,8 +196,55 @@ const ReceiptVoucherEntry: React.FC = () => {
           <Typography variant="h6" color="white" mb={3}>1. Tenancy Contract & Header Details</Typography>
           
           <Grid container spacing={3}>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={4}>
+              <DatePicker
+                label="Receipt Date"
+                format="DD/MM/YYYY"
+                value={formData.receipt_date ? dayjs(formData.receipt_date) : null}
+                onChange={(newValue) => setFormData({ ...formData, receipt_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    sx: tfSx
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Payment Purpose"
+                select
+                required
+                sx={tfSx}
+                value={formData.payment_purpose}
+                onChange={e => setFormData({...formData, payment_purpose: e.target.value})}
+              >
+                <MenuItem value="New Tenancy">New Tenancy</MenuItem>
+                <MenuItem value="Renewal">Renewal</MenuItem>
+                <MenuItem value="Partial Rent">Partial Rent</MenuItem>
+                <MenuItem value="Security Deposit">Security Deposit</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Currency"
+                select
+                sx={tfSx}
+                value={formData.currency}
+                onChange={e => setFormData({...formData, currency: e.target.value})}
+              >
+                <MenuItem value="AED">AED</MenuItem>
+                <MenuItem value="USD">USD</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sx={{ width: '100%' }}>
               <Autocomplete
+                fullWidth
+                sx={{ width: '100%' }}
                 options={leases}
                 ListboxProps={{ sx: { maxHeight: '500px', '& li': { py: 2, px: 2 } } }}
                 getOptionLabel={(option) => 
@@ -201,27 +255,10 @@ const ReceiptVoucherEntry: React.FC = () => {
                 renderInput={(params) => (
                   <TextField 
                     {...params} 
+                    fullWidth
                     label="Select Tenancy Contract" 
                     required 
-                    multiline
-                    rows={4}
-                    sx={{
-                      ...tfSx,
-                      '& .MuiOutlinedInput-root': {
-                        ...tfSx['& .MuiOutlinedInput-root'],
-                        minHeight: '120px', // Very large box area
-                        fontSize: '1.25rem', 
-                        alignItems: 'flex-start',
-                        padding: '16px'
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '1.2rem', // Larger label
-                      },
-                      '& .MuiInputBase-input': {
-                        fontSize: '1.25rem', 
-                        lineHeight: 1.5
-                      }
-                    }}
+                    sx={{ ...tfSx, width: '100%' }}
                     placeholder="Search by tenant, property, or lease number..."
                   />
                 )}
@@ -268,49 +305,6 @@ const ReceiptVoucherEntry: React.FC = () => {
                 </Box>
               </Grid>
             )}
-
-            <Grid item xs={12} sm={4}>
-              <DatePicker
-                label="Receipt Date"
-                format="DD/MM/YYYY"
-                value={formData.receipt_date ? dayjs(formData.receipt_date) : null}
-                onChange={(newValue) => setFormData({ ...formData, receipt_date: newValue ? newValue.format('YYYY-MM-DD') : '' })}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    required: true,
-                    sx: tfSx
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Payment Purpose"
-                select
-                required
-                sx={tfSx}
-                value={formData.payment_purpose}
-                onChange={e => setFormData({...formData, payment_purpose: e.target.value})}
-              >
-                <MenuItem value="New Tenancy">New Tenancy</MenuItem>
-                <MenuItem value="Renewal">Renewal</MenuItem>
-                <MenuItem value="Partial Rent">Partial Rent</MenuItem>
-                <MenuItem value="Security Deposit">Security Deposit</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Total Amount"
-                type="number"
-                required
-                sx={tfSx}
-                value={formData.total_amount}
-                onChange={e => setFormData({...formData, total_amount: Number(e.target.value)})}
-              />
-            </Grid>
           </Grid>
         </Paper>
 

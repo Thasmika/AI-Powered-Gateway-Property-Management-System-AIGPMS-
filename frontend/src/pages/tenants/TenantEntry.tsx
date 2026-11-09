@@ -87,22 +87,51 @@ const TenantEntry: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
+      // Sanitize all optional string fields safely
+      const sanitizeStr = (v: any) => {
+        if (typeof v === 'string') {
+          const trimmed = v.trim();
+          return trimmed === '' ? null : trimmed;
+        }
+        return v || null;
+      };
+
       const payload = {
         ...formData,
-        id_expiry: formData.id_expiry ? formData.id_expiry : null,
-        passport_expiry_date: formData.passport_expiry_date ? formData.passport_expiry_date : null,
-        email: formData.email ? formData.email : null
+        trade_name: sanitizeStr(formData.trade_name),
+        id_number: sanitizeStr(formData.id_number),
+        id_expiry: formData.id_expiry || null,
+        passport_number: sanitizeStr(formData.passport_number),
+        passport_expiry_date: formData.passport_expiry_date || null,
+        nationality: sanitizeStr(formData.nationality),
+        email: sanitizeStr(formData.email),
+        phone: sanitizeStr(formData.phone),
+        whatsapp: sanitizeStr(formData.whatsapp),
+        address: sanitizeStr(formData.address),
+        employer: sanitizeStr(formData.employer),
+        emergency_contact: sanitizeStr(formData.emergency_contact),
+        notes: sanitizeStr(formData.notes),
       };
 
       if (isEditMode) {
-        await api.put(`/tenants/${tenantId}`, payload);
+        await api.put(`/tenants/${tenantId}/`, payload);
         navigate(`/tenants-leases/tenants/${tenantId}`);
       } else {
-        const res = await api.post('/tenants', payload);
+        // Use trailing slash to avoid FastAPI 307 redirect (which can drop the POST body)
+        const res = await api.post('/tenants/', payload);
         navigate(`/tenants-leases/tenants/${res.data.tenant_id}`);
       }
     } catch (e: any) {
-      setError(e.response?.data?.detail || e.message || `Failed to ${isEditMode ? 'update' : 'create'} tenant`);
+      // FastAPI 422 errors return detail as an array of objects — format them into a readable string
+      const detail = e.response?.data?.detail;
+      let errorMsg: string;
+      if (Array.isArray(detail)) {
+        errorMsg = detail.map((d: any) => `${d.loc?.join('.')} — ${d.msg}`).join('; ');
+      } else {
+        errorMsg = detail || e.message || `Failed to ${isEditMode ? 'update' : 'create'} tenant`;
+      }
+      setError(errorMsg);
+      alert(`Debug Error: ${errorMsg}`); // Force show error to user
     } finally {
       setSaving(false);
     }

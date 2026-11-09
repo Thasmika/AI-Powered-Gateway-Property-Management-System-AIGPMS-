@@ -9,6 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAuth } from '../../context/AuthContext';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface ApprovalLimit {
   limit_id: string;
@@ -87,6 +88,7 @@ const ApprovalLimits: React.FC = () => {
           <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>Approval Limits</Typography>
           <Typography variant="body2" color="text.secondary">Role-based financial authorization thresholds</Typography>
         </Box>
+        <Box sx={{ ml: 'auto' }}><PdfExportButton title="Approval Limits" /></Box>
       </Box>
 
       <Paper elevation={0} sx={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(99,102,241,0.05))', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 2, p: 2.5, mb: 3, display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>

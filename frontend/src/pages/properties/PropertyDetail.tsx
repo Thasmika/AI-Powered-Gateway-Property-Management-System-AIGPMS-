@@ -15,7 +15,7 @@ import QuickEntityModal from '../../components/QuickEntityModal';
 import type { QuickEntityModalProps } from '../../components/QuickEntityModal';
 import ImageUpload from '../../components/ImageUpload';
 import PhotoGallery from '../../components/PhotoGallery';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 interface PropertyUnit {
@@ -61,11 +61,13 @@ interface PropertyDetail {
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 import { getFileUrl } from '../../services/api';
+import PdfExportButton from '../../components/PdfExportButton';
 
 const PropertyDetail: React.FC = () => {
   const { propertyId } = useParams<{ propertyId: string }>();
   const { token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +136,16 @@ const PropertyDetail: React.FC = () => {
   }, [propertyId, authHeaders]);
 
   useEffect(() => { fetchProperty(); }, [fetchProperty]);
+
+  useEffect(() => {
+    if (property && location.state?.openUnitId) {
+      const unitToOpen = property.units.find(u => u.unit_id === location.state.openUnitId);
+      if (unitToOpen && !viewUnitOpen && !selectedUnit) {
+        setSelectedUnit(unitToOpen);
+        setViewUnitOpen(true);
+      }
+    }
+  }, [property, location.state, viewUnitOpen, selectedUnit]);
 
   const handlePropertyPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -363,6 +375,7 @@ const PropertyDetail: React.FC = () => {
           <Typography variant="subtitle1" color="text.secondary">{property.property_code}</Typography>
         </Box>
         <Chip label={property.status} sx={{ ml: 'auto', bgcolor: property.status === 'Active' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)', color: property.status === 'Active' ? '#10b981' : 'white' }} />
+        <PdfExportButton />
       </Box>
 
       <Grid container spacing={3}>
@@ -424,7 +437,7 @@ const PropertyDetail: React.FC = () => {
                       <TableCell sx={{ color: 'text.secondary' }}>{unit.unit_type || '—'}</TableCell>
                       <TableCell sx={{ color: 'text.secondary' }}>{unit.area_sqm || '—'} {unit.area_measure?.toLowerCase() || 'sqm'}</TableCell>
                       <TableCell>
-                         <Chip label={unit.status} size="small" sx={{ bgcolor: unit.status === 'Vacant' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)', color: unit.status === 'Vacant' ? '#f59e0b' : '#10b981', fontSize: '0.7rem' }} />
+                         <Chip label={unit.status} size="small" sx={{ bgcolor: unit.status === 'Vacant' ? 'rgba(245,158,11,0.15)' : unit.status === 'Used By Staff' ? 'rgba(56,189,248,0.15)' : unit.status === 'Office Use' ? 'rgba(167,139,250,0.15)' : 'rgba(16,185,129,0.15)', color: unit.status === 'Vacant' ? '#f59e0b' : unit.status === 'Used By Staff' ? '#38bdf8' : unit.status === 'Office Use' ? '#a78bfa' : '#10b981', fontSize: '0.7rem' }} />
                       </TableCell>
                       <TableCell align="right">
                         <IconButton size="small" onClick={() => { setSelectedUnit(unit); setViewUnitOpen(true); }} sx={{ color: 'text.secondary', '&:hover': { color: 'white' }, mr: 1 }}>
@@ -576,7 +589,7 @@ const PropertyDetail: React.FC = () => {
                 onChange={(e) => setUnitData({...unitData, status: e.target.value})}
                 fullWidth
               >
-                {['Vacant', 'Occupied', 'Maintenance'].map(opt => (
+                {['Vacant', 'Occupied', 'Used By Staff', 'Office Use', 'Maintenance'].map(opt => (
                   <MenuItem key={opt} value={opt}>{opt}</MenuItem>
                 ))}
               </TextField>

@@ -5,7 +5,7 @@ import os
 from app.core.config import settings
 from app.database.session import engine, Base, SessionLocal
 from app.database.init_db import init_db
-from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership, tenants, leases, receipts, pdc_received, pdc_issued, alerts, upload, ai
+from app.api.endpoints import auth, master_data, properties, title_deeds, investment, ownership, tenants, leases, receipts, pdc_received, pdc_issued, alerts, upload, ai, expenses, loans, maintenance, labourcamp, dashboard
 
 # ── Register ALL models with SQLAlchemy metadata ──────────────────────────────
 # This must happen BEFORE create_all() so every table is created on startup.
@@ -33,9 +33,8 @@ app = FastAPI(
     version="1.0.0",
     description=(
         "AI Powered Gateway Property Management System — "
-        "Sprint 1 + Extension Complete: All master data tables, "
-        "35 core tables + 10 master tables = 45 tables initialized. "
-        "Master Data API live at /api/v1/master."
+        "Sprint 9: AI Chatbot, Smart Alerts, Dashboards & Reports. "
+        "All 45 tables active. Dashboard API at /api/v1/dashboard."
     ),
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
@@ -46,6 +45,7 @@ app = FastAPI(
 # ── Ensure Uploads Directory Exists ───────────────────────────────────────────
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+app.mount(f"{settings.API_V1_STR}/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="api_uploads")
 
 # ── CORS Middleware ───────────────────────────────────────────────────────────
 app.add_middleware(
@@ -71,6 +71,11 @@ app.include_router(pdc_received.router, prefix=f"{settings.API_V1_STR}/pdc-recei
 app.include_router(pdc_issued.router, prefix=f"{settings.API_V1_STR}/pdc-issued", tags=["PDC Issued"])
 app.include_router(alerts.router, prefix=f"{settings.API_V1_STR}/alerts", tags=["Alerts"])
 app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["AI Assistant"])
+app.include_router(expenses.router, prefix=f"{settings.API_V1_STR}/expenses", tags=["Expenses"])
+app.include_router(loans.router, prefix=f"{settings.API_V1_STR}/loans", tags=["Finance & Loans"])
+app.include_router(maintenance.router, prefix=f"{settings.API_V1_STR}/maintenance-tickets", tags=["Maintenance"])
+app.include_router(labourcamp.router, prefix=f"{settings.API_V1_STR}/labour-camp", tags=["Labour Camp"])
+app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["Dashboards"])
 # ── Health & Root ─────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 def read_root():

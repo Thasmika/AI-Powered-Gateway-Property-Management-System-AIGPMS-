@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from datetime import datetime
 import uuid
+import re
 
 from app.database.session import get_db
 from app.api.deps import get_current_active_user, require_roles
@@ -10,19 +12,43 @@ from app.models.auth import User
 from app.models.pdc import (
     RentalReceipt, RentalReceiptPaymentLine, PDCReceived, PDCReceivedStatusHistory
 )
-from app.models.tenant import Lease
+from app.models.tenant import Lease, LeaseVersion
 from app.schemas.pdc import RentalReceiptCreate, RentalReceiptResponse
 
 router = APIRouter()
 
 def generate_receipt_number(db: Session) -> str:
-    # A simple receipt number generator
-    count = db.query(RentalReceipt).count()
-    return f"REC-{2026}-{count + 1:04d}"
+    """Generate a unique receipt number by finding the current MAX sequence number."""
+    year = datetime.utcnow().year
+    prefix = f"REC-{year}-"
+    # Find the highest existing sequence number for this year
+    latest = db.query(func.max(RentalReceipt.receipt_number)).filter(
+        RentalReceipt.receipt_number.like(f"{prefix}%")
+    ).scalar()
+    if latest:
+        try:
+            seq = int(latest.replace(prefix, "")) + 1
+        except (ValueError, AttributeError):
+            seq = 1
+    else:
+        seq = 1
+    return f"{prefix}{seq:04d}"
 
 def generate_pdc_reference(db: Session) -> str:
-    count = db.query(PDCReceived).count()
-    return f"PDC-RX-{count + 1:05d}"
+    """Generate a unique PDC reference by finding the current MAX sequence number."""
+    prefix = "PDC-RX-"
+    # Find the highest existing sequence number across ALL pdc_received records
+    latest = db.query(func.max(PDCReceived.pdc_receipt_reference)).filter(
+        PDCReceived.pdc_receipt_reference.like(f"{prefix}%")
+    ).scalar()
+    if latest:
+        try:
+            seq = int(latest.replace(prefix, "")) + 1
+        except (ValueError, AttributeError):
+            seq = 1
+    else:
+        seq = 1
+    return f"{prefix}{seq:05d}"
 
 @router.post("/", response_model=RentalReceiptResponse, status_code=status.HTTP_201_CREATED)
 def create_receipt(
@@ -30,18 +56,27 @@ def create_receipt(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator", "Camp Supervisor"]))
 ):
-    # 1. Validation: Sum of lines must equal header total
+    # 1. Validation: Sum of lines must equal header total (rounded to 2 decimal places)
+    from decimal import Decimal as D, ROUND_HALF_UP
     total_lines_sum = sum(line.amount for line in receipt_in.payment_lines)
-    if total_lines_sum != receipt_in.total_amount:
+    total_header = receipt_in.total_amount
+    diff = abs(total_lines_sum - total_header)
+    if diff > D("0.01"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Receipt total ({receipt_in.total_amount}) does not match sum of payment lines ({total_lines_sum})."
+            detail=f"Receipt total ({total_header}) does not match sum of payment lines ({total_lines_sum}). Difference: {diff}"
         )
+    # Normalise header total to match lines sum to avoid any downstream mismatch
+    receipt_in.total_amount = total_lines_sum
         
     # 1b. Validation & Population: Resolve from Lease
     lease = db.query(Lease).filter(Lease.lease_id == receipt_in.lease_id).first()
     if not lease:
         raise HTTPException(status_code=404, detail="Lease not found")
+        
+    lease_version = db.query(LeaseVersion).filter(LeaseVersion.version_id == receipt_in.lease_version_id).first()
+    if not lease_version:
+        raise HTTPException(status_code=404, detail="Lease version not found")
         
     if not receipt_in.tenant_id:
         receipt_in.tenant_id = lease.tenant_id
@@ -50,10 +85,10 @@ def create_receipt(
     if not receipt_in.unit_id:
         receipt_in.unit_id = lease.unit_id
         
-    if lease.currency != receipt_in.currency:
+    if lease_version.currency != receipt_in.currency:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Receipt currency ({receipt_in.currency}) must match lease currency ({lease.currency})."
+            detail=f"Receipt currency ({receipt_in.currency}) must match lease currency ({lease_version.currency})."
         )
     
     # 2. Validation: No duplicate cheques in this receipt
@@ -118,6 +153,10 @@ def create_receipt(
             if not line_in.cheque_number or not line_in.bank_name or not line_in.instrument_date:
                 raise HTTPException(status_code=400, detail="Cheque number, bank name, and date are required for cheques.")
                 
+            today = datetime.utcnow().date()
+            days_until = (line_in.instrument_date - today).days
+            initial_status = "Due Soon" if days_until <= 7 else "Received"
+
             db_pdc = PDCReceived(
                 pdc_receipt_reference=generate_pdc_reference(db),
                 property_id=receipt_in.property_id,
@@ -135,7 +174,7 @@ def create_receipt(
                 rental_period_to=line_in.rental_period_to,
                 date_received=receipt_in.receipt_date,
                 received_by=current_user.user_id,
-                status="Received"
+                status=initial_status
             )
             db.add(db_pdc)
             db.flush()
@@ -147,7 +186,7 @@ def create_receipt(
             db_history = PDCReceivedStatusHistory(
                 pdc_received_id=db_pdc.pdc_received_id,
                 old_status=None,
-                new_status="Received",
+                new_status=initial_status,
                 change_reason="Receipt Created",
                 changed_by=current_user.user_id
             )
@@ -160,7 +199,7 @@ def create_receipt(
 
 @router.get("/", response_model=List[RentalReceiptResponse])
 def get_receipts(
-    skip: int = 0, limit: int = 100, 
+    skip: int = 0, limit: int = 5000, 
     status_filter: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -204,6 +243,41 @@ def post_receipt(
     receipt.posted_at = datetime.utcnow()
     receipt.posted_by = current_user.user_id
     
+    # NEW: If the property is a Labour Camp, extend the tenancy contract expiry by 1 calendar month
+    from app.models.property import Property
+    from app.models.tenant import Lease, LeaseVersion
+    import calendar
+
+    prop = db.query(Property).filter(Property.property_id == receipt.property_id).first()
+    if prop and prop.property_type == "Labour Camp":
+        lease = db.query(Lease).filter(Lease.lease_id == receipt.lease_id).first()
+        if lease:
+            current_version = db.query(LeaseVersion).filter(
+                LeaseVersion.lease_id == lease.lease_id,
+                LeaseVersion.is_current_version == True
+            ).first()
+            if current_version:
+                d = current_version.contract_end_date if current_version.contract_end_date else receipt.receipt_date
+                if d:
+                    month = d.month
+                    year = d.year
+                    day = d.day
+                    if month == 12:
+                        month = 1
+                        year += 1
+                    else:
+                        month += 1
+                    max_day = calendar.monthrange(year, month)[1]
+                    if day > max_day:
+                        day = max_day
+                    new_expiry = d.replace(year=year, month=month, day=day)
+                    
+                    current_version.contract_end_date = new_expiry
+                    
+                    if lease.status == "Expired":
+                        lease.status = "Active"
+                        current_version.status = "Active"
+                        
     db.commit()
     db.refresh(receipt)
     return receipt

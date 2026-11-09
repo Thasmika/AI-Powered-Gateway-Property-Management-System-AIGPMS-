@@ -23,6 +23,14 @@ const masterModules = [
     tag: 'Lookups',
   },
   {
+    title: 'Company Bank Accounts',
+    subtitle: 'Internal accounts for PDC issuance',
+    icon: <AccountBalanceIcon sx={{ fontSize: 36 }} />,
+    path: '/admin/company-banks',
+    color: '#10b981',
+    tag: 'Finance',
+  },
+  {
     title: 'Expense Categories',
     subtitle: 'General & Property expense types',
     icon: <CategoryIcon sx={{ fontSize: 36 }} />,

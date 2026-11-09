@@ -13,6 +13,7 @@ import { Typography, Paper } from '@mui/material';
 // Admin — Master Data Pages (Module 15)
 import MasterDataHub from './pages/admin/MasterDataHub';
 import BankMaster from './pages/admin/BankMaster';
+import CompanyBankMaster from './pages/admin/CompanyBankMaster';
 import ExpenseCategoryMaster from './pages/admin/ExpenseCategoryMaster';
 import ApprovalLimits from './pages/admin/ApprovalLimits';
 import NotificationTemplates from './pages/admin/NotificationTemplates';
@@ -21,6 +22,7 @@ import NotificationTemplates from './pages/admin/NotificationTemplates';
 import PropertyList from './pages/properties/PropertyList';
 import PropertyEntry from './pages/properties/PropertyEntry';
 import PropertyDetail from './pages/properties/PropertyDetail';
+import UnitRegister from './pages/properties/UnitRegister';
 import TitleDeedList from './pages/title-deeds/TitleDeedList';
 import TitleDeedEntry from './pages/title-deeds/TitleDeedEntry';
 import TitleDeedDetail from './pages/title-deeds/TitleDeedDetail';
@@ -49,7 +51,37 @@ import PDCReceivedDetail from './pages/pdc/PDCReceivedDetail';
 
 import PDCIssuedRegister from './pages/pdc/PDCIssuedRegister';
 import PDCIssuedDetail from './pages/pdc/PDCIssuedDetail';
-import ChequebookRegister from './pages/pdc/ChequebookRegister';
+
+
+// Sprint 7 — Expenses, Finance & Loans
+import ExpenseList from './pages/expenses/ExpenseList';
+import ExpenseEntry from './pages/expenses/ExpenseEntry';
+import ExpenseDetail from './pages/expenses/ExpenseDetail';
+import LoanList from './pages/loans/LoanList';
+import LoanDetail from './pages/loans/LoanDetail';
+import PaymentVoucherEntry from './pages/loans/PaymentVoucherEntry';
+
+// Sprint 8 — Maintenance Management
+import MaintenanceList from './pages/maintenance/MaintenanceList';
+import MaintenanceTicketEntry from './pages/maintenance/MaintenanceTicketEntry';
+import MaintenanceTicketDetail from './pages/maintenance/MaintenanceTicketDetail';
+
+// Sprint 8 — Labour Camp Management
+import LabourCampManagement from './pages/labourcamp/LabourCampManagement';
+import LabourCampResidents from './pages/labourcamp/LabourCampResidents';
+import LabourCampUtilities from './pages/labourcamp/LabourCampUtilities';
+import LabourCampCashReceipt from './pages/labourcamp/LabourCampCashReceipt';
+import LabourCampCashReceiptDetail from './pages/labourcamp/LabourCampCashReceiptDetail';
+
+// Sprint 9 — Role-Based Dashboards
+import MdDashboard from './pages/dashboard/MdDashboard';
+import FinanceDashboard from './pages/dashboard/FinanceDashboard';
+import PropertyDashboard from './pages/dashboard/PropertyDashboard';
+import MaintenanceDashboard from './pages/dashboard/MaintenanceDashboard';
+import LabourCampDashboard from './pages/dashboard/LabourCampDashboard';
+
+// Sprint 9 — Reports Centre
+import ReportCentre from './pages/reports/ReportCentre';
 
 // Generic placeholder page for role authorization testing
 const ModulePlaceholder: React.FC<{ name: string }> = ({ name }) => {
@@ -68,11 +100,12 @@ const ModulePlaceholder: React.FC<{ name: string }> = ({ name }) => {
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import 'dayjs/locale/en-gb';
 
 const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
         <CssBaseline />
         <AuthProvider>
           <Router>
@@ -120,6 +153,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
                     <PropertyDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="unit-register"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <UnitRegister />
                   </ProtectedRoute>
                 }
               />
@@ -337,21 +378,30 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="cheque-books"
-                element={
-                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ChequebookRegister />
-                  </ProtectedRoute>
-                }
-              />
 
-              {/* ── Finance ──────────────────────────────────────────────── */}
+
+              {/* ── Finance & Expenses ───────────────────────────────────── */}
               <Route
                 path="expenses"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ModulePlaceholder name="Expense Management" />
+                    <ExpenseList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="expenses/new"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <ExpenseEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="expenses/:expenseId"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <ExpenseDetail />
                   </ProtectedRoute>
                 }
               />
@@ -359,25 +409,101 @@ const App: React.FC = () => {
                 path="finance"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ModulePlaceholder name="Finance & Loans" />
+                    <LoanList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="loans"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <LoanList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="loans/:loanId"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <LoanDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="payment-vouchers"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <PaymentVoucherEntry />
                   </ProtectedRoute>
                 }
               />
 
-              {/* ── Operations ───────────────────────────────────────────── */}
+              {/* ── Operations — Maintenance (Sprint 8) ─────────────────── */}
               <Route
                 path="maintenance"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator']}>
-                    <ModulePlaceholder name="Maintenance Management" />
+                    <MaintenanceList />
                   </ProtectedRoute>
                 }
               />
               <Route
+                path="maintenance/new"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator']}>
+                    <MaintenanceTicketEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="maintenance/:ticketId"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator']}>
+                    <MaintenanceTicketDetail />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ── Operations — Labour Camp (Sprint 8) ──────────────────── */}
+              <Route
                 path="labour-camp"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
-                    <ModulePlaceholder name="Labour Camp Management" />
+                    <LabourCampManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="labour-camp/residents"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LabourCampResidents />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="labour-camp/utilities"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LabourCampUtilities />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ── Labour Camp — Cash Collection (Technical Instruction Sheet Aug 2026) ── */}
+              <Route
+                path="labour-camp/cash-receipts"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LabourCampCashReceipt />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="labour-camp/cash-receipts/:receiptId"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator']}>
+                    <LabourCampCashReceiptDetail />
                   </ProtectedRoute>
                 }
               />
@@ -388,6 +514,58 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <AIChat />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ── Sprint 9 — Role-Based Dashboards ─────────────────────── */}
+              <Route
+                path="dashboard/md"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Administrator']}>
+                    <MdDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/finance"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <FinanceDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/property"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <PropertyDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/maintenance"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator']}>
+                    <MaintenanceDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/labour-camp"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Camp Supervisor', 'Administrator']}>
+                    <LabourCampDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ── Sprint 9 — Reports Centre ─────────────────────────────── */}
+              <Route
+                path="reports"
+                element={
+                  <ProtectedRoute>
+                    <ReportCentre />
                   </ProtectedRoute>
                 }
               />
@@ -406,6 +584,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={['Administrator', 'Managing Director']}>
                     <BankMaster />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/company-banks"
+                element={
+                  <ProtectedRoute allowedRoles={['Administrator', 'Managing Director']}>
+                    <CompanyBankMaster />
                   </ProtectedRoute>
                 }
               />

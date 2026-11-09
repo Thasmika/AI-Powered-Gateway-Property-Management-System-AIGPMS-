@@ -13,11 +13,15 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import LeasePaymentSchedule from './LeasePaymentSchedule';
+import LeasePDCList from './LeasePDCList';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import { formatDate } from '../../utils/dateUtils';
+import { getFileUrl } from '../../services/api';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -34,11 +38,7 @@ function CustomTabPanel(props: TabPanelProps) {
   );
 }
 
-function buildFileUrl(filePath: string): string {
-  const base = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
-  const clean = filePath.startsWith('/') ? filePath : `/${filePath}`;
-  return `${base}${clean}`;
-}
+
 
 const DOCUMENT_TYPES = [
   'Tenancy Contract',
@@ -65,6 +65,10 @@ const LeaseDetail: React.FC = () => {
     renewal_reason: ''
   });
   const [renewing, setRenewing] = useState(false);
+
+  // Cancel state
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   // Documents state
   const [documents, setDocuments] = useState<any[]>([]);
@@ -136,6 +140,19 @@ const LeaseDetail: React.FC = () => {
     }
   };
 
+  const handleCancelSubmit = async () => {
+    setCanceling(true);
+    try {
+      await api.post(`/leases/${leaseId}/cancel`);
+      setCancelDialogOpen(false);
+      fetchLease();
+    } catch (e: any) {
+      alert(e.response?.data?.detail || e.message || 'Failed to cancel lease');
+    } finally {
+      setCanceling(false);
+    }
+  };
+
   const handleUploadSubmit = async () => {
     if (!docType || !docName || !selectedFile) {
       setUploadError('Type, name, and file are required.');
@@ -201,6 +218,13 @@ const LeaseDetail: React.FC = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <PdfExportButton />
+          {lease.status === 'Active' && (
+            <Button variant="outlined" startIcon={<CancelIcon />} onClick={() => setCancelDialogOpen(true)}
+              sx={{ color: '#ef4444', borderColor: '#ef4444', '&:hover': { borderColor: '#dc2626', bgcolor: 'rgba(239,68,68,0.1)' } }}>
+              Cancel Contract
+            </Button>
+          )}
           <Button variant="contained" startIcon={<AutorenewIcon />} onClick={() => setRenewDialogOpen(true)}
             sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
             Renew Lease
@@ -213,7 +237,7 @@ const LeaseDetail: React.FC = () => {
           <Tabs value={tabValue} onChange={handleTabChange} textColor="inherit" indicatorColor="primary">
             <Tab label="Current Version Details" />
             <Tab label="Version History" />
-            <Tab label="Payment Schedule" />
+            <Tab label="PDC Received" />
             <Tab label="Documents" />
           </Tabs>
         </Box>
@@ -225,8 +249,8 @@ const LeaseDetail: React.FC = () => {
                 <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1 }}>Contract Info</Typography>
                 <Paper elevation={0} sx={{ p: 2, background: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>
                   <Grid container spacing={2}>
-                    <Grid item xs={6}><Typography color="text.secondary" variant="body2">Start Date</Typography><Typography color="white" fontWeight={500}>{currentVersion.contract_start_date}</Typography></Grid>
-                    <Grid item xs={6}><Typography color="text.secondary" variant="body2">End Date</Typography><Typography color="white" fontWeight={500}>{currentVersion.contract_end_date}</Typography></Grid>
+                    <Grid item xs={6}><Typography color="text.secondary" variant="body2">Start Date</Typography><Typography color="white" fontWeight={500}>{formatDate(currentVersion.contract_start_date)}</Typography></Grid>
+                    <Grid item xs={6}><Typography color="text.secondary" variant="body2">End Date</Typography><Typography color="white" fontWeight={500}>{formatDate(currentVersion.contract_end_date)}</Typography></Grid>
                     <Grid item xs={6}><Typography color="text.secondary" variant="body2">Annual Rent</Typography><Typography color="white" fontWeight={500}>{currentVersion.annual_rent} {currentVersion.currency}</Typography></Grid>
                     <Grid item xs={6}><Typography color="text.secondary" variant="body2">Payment Freq</Typography><Typography color="white" fontWeight={500}>{currentVersion.payment_frequency}</Typography></Grid>
                   </Grid>
@@ -257,7 +281,7 @@ const LeaseDetail: React.FC = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h6" color="white">Version {v.version_number}</Typography>
-                      <Typography variant="body2" color="text.secondary">{v.contract_start_date} to {v.contract_end_date}</Typography>
+                      <Typography variant="body2" color="text.secondary">{formatDate(v.contract_start_date)} to {formatDate(v.contract_end_date)}</Typography>
                     </Box>
                     <Box sx={{ textAlign: 'right' }}>
                       <Typography variant="h6" color="white">{v.annual_rent} {v.currency}</Typography>
@@ -271,11 +295,7 @@ const LeaseDetail: React.FC = () => {
         </CustomTabPanel>
         
         <CustomTabPanel value={tabValue} index={2}>
-          {currentVersion ? (
-            <LeasePaymentSchedule versionId={currentVersion.version_id} />
-          ) : (
-             <Alert severity="info">No active version found.</Alert>
-          )}
+          <LeasePDCList leaseId={leaseId!} />
         </CustomTabPanel>
 
         <CustomTabPanel value={tabValue} index={3}>
@@ -313,7 +333,7 @@ const LeaseDetail: React.FC = () => {
                       <TableCell><Typography color="white" variant="body2">{doc.document_name}</Typography></TableCell>
                       <TableCell align="center">
                         <Tooltip title="View">
-                          <IconButton size="small" onClick={() => window.open(buildFileUrl(doc.file_path), '_blank')} sx={{ color: '#6366f1' }}>
+                          <IconButton size="small" onClick={() => window.open(getFileUrl(doc.file_path), '_blank')} sx={{ color: '#6366f1' }}>
                             <OpenInNewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -390,6 +410,27 @@ const LeaseDetail: React.FC = () => {
           <Button onClick={() => setUploadDialogOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button onClick={handleUploadSubmit} variant="contained" disabled={uploading} sx={{ bgcolor: '#6366f1' }}>
             {uploading ? <CircularProgress size={20} /> : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cancel Dialog */}
+      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} PaperProps={{ sx: { bgcolor: '#1e293b', color: 'white', minWidth: 400 } }}>
+        <DialogTitle sx={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CancelIcon /> Cancel Contract
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            Are you sure you want to cancel this contract? The associated unit will be automatically marked as vacant.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            This action cannot be undone easily. The contract status will change to Terminated.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setCancelDialogOpen(false)} sx={{ color: 'text.secondary' }}>Close</Button>
+          <Button onClick={handleCancelSubmit} variant="contained" disabled={canceling} sx={{ bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } }}>
+            {canceling ? <CircularProgress size={20} color="inherit" /> : 'Confirm Cancel'}
           </Button>
         </DialogActions>
       </Dialog>

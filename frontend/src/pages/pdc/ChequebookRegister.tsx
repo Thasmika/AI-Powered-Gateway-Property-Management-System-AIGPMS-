@@ -10,6 +10,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../../context/AuthContext';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import PdfExportButton from '../../components/PdfExportButton';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -87,7 +88,9 @@ const ChequebookRegister: React.FC = () => {
             <Typography variant="body2" color="text.secondary">Register and manage company cheque books</Typography>
           </Box>
         </Box>
-        <Button 
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <PdfExportButton title="Cheque Books" />
+          <Button 
           variant="contained" 
           startIcon={<AddIcon />} 
           onClick={() => setOpen(true)}
@@ -95,6 +98,7 @@ const ChequebookRegister: React.FC = () => {
         >
           Register Book
         </Button>
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}

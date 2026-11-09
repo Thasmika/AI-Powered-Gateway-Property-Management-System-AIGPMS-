@@ -4,6 +4,7 @@ import { Box, Typography, Paper, Grid, Button, Table, TableBody, TableCell, Tabl
 import PrintIcon from '@mui/icons-material/Print';
 import SendIcon from '@mui/icons-material/Send';
 import api from '../../services/api';
+import PdfExportButton from '../../components/PdfExportButton';
 
 const ReceiptDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +42,7 @@ const ReceiptDetail: React.FC = () => {
           Receipt {receipt.receipt_number}
         </Typography>
         <Stack direction="row" spacing={2}>
+          <PdfExportButton />
           <Button 
             variant="outlined" 
             startIcon={<PrintIcon />} 

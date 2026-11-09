@@ -68,20 +68,34 @@ const QuickEntityModal: React.FC<QuickEntityModalProps> = ({ open, type, mode, i
       const idField = getIdField();
       
       const isEdit = mode === 'edit';
-      const url = isEdit ? `${API}${endpoint}/${formData[idField]}` : `${API}${endpoint}`;
       
+      // Ensure trailing slash for POST to avoid 307 redirect dropping body in browsers
+      const url = isEdit ? `${API}${endpoint}/${formData[idField]}/` : `${API}${endpoint}/`;
+      
+      // Sanitize formData to convert empty strings to null for optional fields (like email)
+      const sanitizedData = { ...formData };
+      for (const key in sanitizedData) {
+        if (typeof sanitizedData[key] === 'string' && sanitizedData[key].trim() === '') {
+          sanitizedData[key] = null;
+        }
+      }
+
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(sanitizedData)
       });
       
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || `Failed to save ${type.replace('_', ' ')}`);
+        let errorMsg = data.detail || `Failed to save ${type.replace('_', ' ')}`;
+        if (Array.isArray(data.detail)) {
+            errorMsg = data.detail.map((d: any) => `${d.loc?.join('.')} - ${d.msg}`).join('; ');
+        }
+        throw new Error(errorMsg);
       }
       
       const savedData = await res.json();

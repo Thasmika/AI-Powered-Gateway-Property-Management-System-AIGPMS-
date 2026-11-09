@@ -11,6 +11,7 @@ import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useAuth } from '../../context/AuthContext';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface Bank {
   bank_id: string;
@@ -103,10 +104,13 @@ const BankMaster: React.FC = () => {
             sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'text.secondary' }}>
             {showAll ? 'Active Only' : 'Show All'}
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <PdfExportButton title="Bank Master" />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
             sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
             Add Bank
           </Button>
+          </Box>
         </Box>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

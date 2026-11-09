@@ -1,0 +1,277 @@
+import React, { useEffect, useState } from 'react';
+import {
+  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Button, Chip, CircularProgress, Alert, Tabs, Tab,
+  TextField, MenuItem, Grid, Tooltip, IconButton, Stack
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
+import PdfExportButton from '../../components/PdfExportButton';
+
+const statusColors: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info'> = {
+  Pending: 'warning',
+  Approved: 'success',
+  Rejected: 'error',
+  'On Hold': 'info',
+};
+
+interface TabPanelProps { children?: React.ReactNode; index: number; value: number; }
+const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
+  <div hidden={value !== index}>{value === index && <Box pt={2}>{children}</Box>}</div>
+);
+
+const ExpenseList: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState(0); // 0 = General, 1 = Property
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  // Filters
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+
+  const expenseClass = tab === 0 ? 'General' : 'Property';
+
+  const fetchExpenses = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: any = { expense_class: expenseClass, limit: 200 };
+      if (filterStatus) params.approval_status = filterStatus;
+      if (filterDateFrom) params.date_from = filterDateFrom;
+      if (filterDateTo) params.date_to = filterDateTo;
+      const res = await api.get('/expenses', { params });
+      setExpenses(res.data);
+    } catch (e: any) {
+      setError(e.response?.data?.detail || 'Failed to load expenses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchExpenses(); }, [tab, filterStatus, filterDateFrom, filterDateTo]);
+
+  const canApprove = user?.role === 'Managing Director' || user?.role === 'Administrator';
+
+  const handleApprove = async (expId: string) => {
+    try {
+      await api.post(`/expenses/${expId}/approve`, { reason: 'Approved via list action' });
+      setActionMsg('Expense approved successfully');
+      fetchExpenses();
+    } catch (e: any) {
+      setActionMsg(e.response?.data?.detail || 'Approval failed');
+    }
+  };
+
+  const handleReject = async (expId: string) => {
+    const reason = prompt('Enter rejection reason:');
+    if (!reason) return;
+    try {
+      await api.post(`/expenses/${expId}/reject`, { reason });
+      setActionMsg('Expense rejected');
+      fetchExpenses();
+    } catch (e: any) {
+      setActionMsg(e.response?.data?.detail || 'Rejection failed');
+    }
+  };
+
+  const totalAmount = expenses.reduce((s, e) => s + parseFloat(e.total_amount || 0), 0);
+  const pendingCount = expenses.filter(e => e.approval_status === 'Pending').length;
+
+  const renderTable = (rows: any[]) => (
+    <TableContainer component={Paper} sx={{ borderRadius: 2, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ '& th': { fontWeight: 700, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5 } }}>
+            <TableCell>Reference</TableCell>
+            <TableCell>Payee</TableCell>
+            <TableCell>Category</TableCell>
+            {tab === 1 && <TableCell>Property</TableCell>}
+            <TableCell>Invoice Date</TableCell>
+            <TableCell align="right">Amount (AED)</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Shared</TableCell>
+            <TableCell align="center">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#64748b' }}>
+                No {expenseClass} expenses found
+              </TableCell>
+            </TableRow>
+          ) : rows.map((exp) => (
+            <TableRow
+              key={exp.expense_id}
+              sx={{ '&:hover': { background: 'rgba(99,102,241,0.06)' }, cursor: 'pointer', '& td': { borderBottom: '1px solid rgba(255,255,255,0.05)', py: 1.2 } }}
+              onClick={() => navigate(`/expenses/${exp.expense_id}`)}
+            >
+              <TableCell sx={{ color: '#6366f1', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.78rem' }}>
+                {exp.expense_reference}
+              </TableCell>
+              <TableCell sx={{ color: '#e2e8f0', fontWeight: 500 }}>{exp.payee_name}</TableCell>
+              <TableCell sx={{ color: '#94a3b8' }}>{exp.category_id?.slice(0, 8) || '—'}</TableCell>
+              {tab === 1 && <TableCell sx={{ color: '#94a3b8' }}>{exp.property_id?.slice(0, 8) || '—'}</TableCell>}
+              <TableCell sx={{ color: '#94a3b8' }}>{exp.invoice_date ? formatDate(exp.invoice_date) : '—'}</TableCell>
+              <TableCell align="right" sx={{ color: '#e2e8f0', fontWeight: 600 }}>
+                {parseFloat(exp.total_amount || 0).toLocaleString('en-AE', { minimumFractionDigits: 2 })}
+              </TableCell>
+              <TableCell>
+                <Chip
+                  size="small"
+                  label={exp.approval_status}
+                  color={statusColors[exp.approval_status] || 'default'}
+                  sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                />
+              </TableCell>
+              <TableCell>
+                {exp.is_shared ? (
+                  <Chip size="small" label="Shared" color="info" sx={{ fontSize: '0.68rem' }} />
+                ) : <Typography sx={{ color: '#475569', fontSize: '0.75rem' }}>—</Typography>}
+              </TableCell>
+              <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                <Stack direction="row" spacing={0.5} justifyContent="center">
+                  <Tooltip title="View Detail">
+                    <IconButton size="small" onClick={() => navigate(`/expenses/${exp.expense_id}`)} sx={{ color: '#6366f1' }}>
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {canApprove && exp.approval_status === 'Pending' && (
+                    <>
+                      <Tooltip title="Approve">
+                        <IconButton size="small" onClick={() => handleApprove(exp.expense_id)} sx={{ color: '#22c55e' }}>
+                          <CheckCircleIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reject">
+                        <IconButton size="small" onClick={() => handleReject(exp.expense_id)} sx={{ color: '#ef4444' }}>
+                          <CancelIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" alignItems="center" gap={1.5}>
+          <Box sx={{ width: 44, height: 44, borderRadius: 2, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ReceiptLongIcon sx={{ color: '#fff' }} />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight={700} sx={{ color: '#e2e8f0' }}>Expense Management</Typography>
+            <Typography variant="caption" sx={{ color: '#64748b' }}>
+              {expenses.length} records · AED {totalAmount.toLocaleString('en-AE', { minimumFractionDigits: 2 })} total · {pendingCount} pending approval
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <PdfExportButton title="Expense Management" />
+          <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/expenses/new')}
+          sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', fontWeight: 600, borderRadius: 2, px: 3 }}
+        >
+          New Expense
+        </Button>
+        </Box>
+      </Box>
+
+      {actionMsg && (
+        <Alert severity="info" onClose={() => setActionMsg(null)} sx={{ mb: 2 }}>{actionMsg}</Alert>
+      )}
+
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 2, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={2}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <FilterListIcon sx={{ color: '#6366f1', fontSize: 20 }} />
+              <Typography variant="body2" fontWeight={600} sx={{ color: '#94a3b8' }}>Filters</Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <TextField select fullWidth size="small" label="Status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              sx={{ '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }, '& label': { color: '#94a3b8' } }}>
+              <MenuItem value="">All</MenuItem>
+              {['Pending', 'Approved', 'Rejected', 'On Hold'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <TextField fullWidth size="small" label="From Date" type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }, '& label': { color: '#94a3b8' } }} />
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <TextField fullWidth size="small" label="To Date" type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }, '& label': { color: '#94a3b8' } }} />
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <Button onClick={() => { setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }} size="small" sx={{ color: '#64748b' }}>
+              Clear Filters
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Tabs — PM Requirement: Side-by-side General | Property */}
+      <Paper sx={{ borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          sx={{
+            px: 2, pt: 1,
+            '& .MuiTab-root': { color: '#94a3b8', fontWeight: 600, textTransform: 'none', minWidth: 180 },
+            '& .Mui-selected': { color: '#6366f1' },
+            '& .MuiTabs-indicator': { background: '#6366f1', height: 3, borderRadius: 2 },
+          }}
+        >
+          <Tab label="🏢  General Expenses" />
+          <Tab label="🏠  Property Expenses" />
+        </Tabs>
+
+        <Box sx={{ p: 2 }}>
+          {loading ? (
+            <Box display="flex" justifyContent="center" py={6}>
+              <CircularProgress sx={{ color: '#6366f1' }} />
+            </Box>
+          ) : error ? (
+            <Alert severity="error">{error}</Alert>
+          ) : (
+            <>
+              <TabPanel value={tab} index={0}>{renderTable(expenses)}</TabPanel>
+              <TabPanel value={tab} index={1}>{renderTable(expenses)}</TabPanel>
+            </>
+          )}
+        </Box>
+      </Paper>
+    </Box>
+  );
+};
+
+export default ExpenseList;

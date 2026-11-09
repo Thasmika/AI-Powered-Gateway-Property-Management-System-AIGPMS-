@@ -59,6 +59,34 @@ def create_property(
     )
     return db_obj
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Global Units Listing — MUST be defined before /{property_id} route
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/units/all", response_model=List[PropertyUnitOut])
+def list_all_units(
+    db: Session = Depends(get_db),
+    status_filter: Optional[str] = None,
+    unit_type_filter: Optional[str] = None,
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """List all property units across all properties with optional filters."""
+    query = db.query(PropertyUnit)
+    if status_filter:
+        query = query.filter(PropertyUnit.status == status_filter)
+    if unit_type_filter:
+        query = query.filter(PropertyUnit.unit_type == unit_type_filter)
+    units = query.order_by(PropertyUnit.created_at.desc()).all()
+    for unit in units:
+        if unit.title_deed:
+            unit.legal_owner_id = unit.title_deed.legal_owner_id
+            unit.beneficial_owner_id = unit.title_deed.beneficial_owner_id
+        active_lease = next((l for l in unit.leases if l.status != "Terminated"), None)
+        if active_lease:
+            unit.tenant_id = active_lease.tenant_id
+    return units
+
+
 @router.get("/{property_id}", response_model=PropertyDetailOut)
 def get_property(
     property_id: str,
@@ -153,6 +181,7 @@ def delete_property(
         new_value=None
     )
     return None
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Property Units

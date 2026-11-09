@@ -10,6 +10,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface TitleDeed {
   title_deed_id: string;
@@ -79,10 +80,13 @@ const TitleDeedList: React.FC = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/title-deeds/new')}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <PdfExportButton title="Title Deeds" />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/title-deeds/new')}
             sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
             Register Title Deed
           </Button>
+          </Box>
         </Box>
       </Box>
       

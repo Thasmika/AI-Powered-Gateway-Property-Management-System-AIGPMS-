@@ -16,7 +16,7 @@ router = APIRouter()
 def list_leases(
     db: Session = Depends(get_db),
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5000,
     current_user = Depends(deps.get_current_user)
 ):
     """
@@ -161,6 +161,44 @@ def renew_lease(
                 **schedule_in.model_dump()
             )
             db.add(new_schedule)
+
+    db.commit()
+    db.refresh(lease)
+    return lease
+
+@router.post("/{lease_id}/cancel", response_model=LeaseOut)
+def cancel_lease(
+    lease_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    """
+    Cancel an active lease and release the associated unit back to Vacant.
+    """
+    lease = db.query(Lease).filter(Lease.lease_id == lease_id).first()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Lease not found")
+    
+    if lease.status != "Active":
+        raise HTTPException(status_code=400, detail=f"Cannot cancel a lease with status: {lease.status}")
+
+    # Set lease status to Terminated
+    lease.status = "Terminated"
+
+    # Terminate current active version
+    current_version = db.query(LeaseVersion).filter(
+        LeaseVersion.lease_id == lease_id, 
+        LeaseVersion.is_current_version == True
+    ).first()
+    if current_version:
+        current_version.status = "Terminated"
+
+    # Release unit to Vacant
+    from app.models.property import PropertyUnit
+    if lease.unit_id:
+        unit = db.query(PropertyUnit).filter(PropertyUnit.unit_id == lease.unit_id).first()
+        if unit:
+            unit.status = "Vacant"
 
     db.commit()
     db.refresh(lease)

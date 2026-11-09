@@ -59,6 +59,14 @@ from app.models.finance import (  # noqa: F401
     SystemSetting,
 )
 
+# Finance & Loans (Module 10 — Sprint 7)
+from app.models.loans import (  # noqa: F401
+    Loan,
+    LoanInstalment,
+    LoanDocument,
+    PaymentVoucher,
+)
+
 # Master Data & Configuration (Module 15)
 from app.models.master_data import (  # noqa: F401
     MasterBank,
@@ -71,4 +79,24 @@ from app.models.master_data import (  # noqa: F401
     NotificationTemplate,
     AIPromptTemplate,
     ApprovalLimit,
+    Supplier,
 )
+
+# Maintenance Management (Module 09 — Sprint 8)
+from app.models.maintenance import (  # noqa: F401
+    MaintenanceCategory,
+    MaintenanceTicket,
+    MaintenanceAssignment,
+    MaintenanceDocument,
+)
+
+# Labour Camp Management (Module 11 — Sprint 8)
+from app.models.labourcamp import (  # noqa: F401
+    LabourCampUnit,
+    CampResident,
+    CampLease,
+    CampUtilityReading,
+    LabourCampCashReceipt,
+    LabourCampCashReceiptLine,
+)
+

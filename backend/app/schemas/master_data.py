@@ -310,3 +310,37 @@ class ApprovalLimitOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 11. Supplier / Payee
+# ─────────────────────────────────────────────────────────────────────────────
+
+SUPPLIER_TYPES = ["Agent", "Construction Company", "Material Supplier", "Government", "Utility", "Other"]
+
+class SupplierCreate(BaseModel):
+    supplier_name: str = Field(..., max_length=200)
+    supplier_type: Optional[str] = Field(None, max_length=100)
+    contact_number: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=150)
+    is_active: bool = True
+
+class SupplierUpdate(BaseModel):
+    supplier_name: Optional[str] = Field(None, max_length=200)
+    supplier_type: Optional[str] = Field(None, max_length=100)
+    contact_number: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=150)
+    is_active: Optional[bool] = None
+
+class SupplierOut(BaseModel):
+    supplier_id: str
+    supplier_name: str
+    supplier_type: Optional[str]
+    contact_number: Optional[str]
+    email: Optional[str]
+    is_active: bool
+    created_date: datetime
+    updated_date: datetime
+
+    class Config:
+        from_attributes = True

@@ -43,69 +43,64 @@ def get_bank_accounts(
     accounts = db.query(BankAccount).filter(BankAccount.status == "Active").all()
     return accounts
 
-
-# =============================================================================
-# Cheque Books
-# =============================================================================
-
-@router.get("/cheque-books", response_model=List[ChequeBookResponse])
-def get_cheque_books(
+@router.post("/bank-accounts", response_model=BankAccountResponse)
+def create_bank_account(
+    account_in: __import__('app.schemas.pdc_issued', fromlist=['BankAccountCreate']).BankAccountCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    books = db.query(ChequeBook).all()
-    # Let's count leaves manually if needed or just return books
-    return books
-
-@router.post("/cheque-books", response_model=ChequeBookResponse)
-def create_cheque_book(
-    book_in: ChequeBookCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    # Verify bank account
-    bank_account = db.query(BankAccount).filter(BankAccount.account_id == book_in.bank_account_id).first()
-    if not bank_account:
-        raise HTTPException(status_code=404, detail="Bank Account not found")
-
-    new_book = ChequeBook(**book_in.model_dump())
-    db.add(new_book)
-    db.flush() # To get cheque_book_id
-
-    # Auto-generate cheque leaves
-    try:
-        from_num = int(book_in.series_from)
-        to_num = int(book_in.series_to)
-        
-        if from_num > to_num:
-            raise ValueError
-    except ValueError:
-        raise HTTPException(status_code=400, detail="series_from and series_to must be valid integers and from <= to")
+    # Check for duplicate account number
+    existing = db.query(BankAccount).filter(BankAccount.account_number == account_in.account_number).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this number already exists.")
     
-    # Optional: Pad with zeros to match original string length
-    padding_length = len(book_in.series_from)
-    
-    for i in range(from_num, to_num + 1):
-        padded_number = str(i).zfill(padding_length)
-        leaf = ChequeLeaf(
-            cheque_book_id=new_book.cheque_book_id,
-            cheque_number=padded_number,
-            status="Available"
-        )
-        db.add(leaf)
-
+    new_acc = BankAccount(**account_in.model_dump())
+    db.add(new_acc)
     db.commit()
-    db.refresh(new_book)
-    return new_book
+    db.refresh(new_acc)
+    return new_acc
 
-@router.get("/cheque-books/{book_id}/leaves", response_model=List[ChequeLeafResponse])
-def get_cheque_leaves(
-    book_id: str,
+@router.put("/bank-accounts/{account_id}", response_model=BankAccountResponse)
+def update_bank_account(
+    account_id: str,
+    account_in: __import__('app.schemas.pdc_issued', fromlist=['BankAccountCreate']).BankAccountCreate, # using Create schema since all fields are updatable
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    leaves = db.query(ChequeLeaf).filter(ChequeLeaf.cheque_book_id == book_id).order_by(ChequeLeaf.cheque_number).all()
-    return leaves
+    account = db.query(BankAccount).filter(BankAccount.account_id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Bank Account not found")
+        
+    # Check for duplicate account number on update
+    existing = db.query(BankAccount).filter(
+        BankAccount.account_number == account_in.account_number,
+        BankAccount.account_id != account_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Another account with this number already exists.")
+
+    update_data = account_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(account, field, value)
+        
+    db.commit()
+    db.refresh(account)
+    return account
+
+@router.delete("/bank-accounts/{account_id}")
+def delete_bank_account(
+    account_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    account = db.query(BankAccount).filter(BankAccount.account_id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Bank Account not found")
+    
+    # We soft delete by setting status to 'Inactive' instead of deleting
+    account.status = "Inactive"
+    db.commit()
+    return {"message": "Account deactivated successfully"}
 
 
 # =============================================================================
@@ -118,6 +113,15 @@ def get_pdc_issued(
     current_user: User = Depends(get_current_active_user)
 ):
     pdcs = db.query(PDCIssued).order_by(PDCIssued.created_at.desc()).all()
+    
+    today = datetime.utcnow().date()
+    from datetime import timedelta
+    due_soon_date = today + timedelta(days=14)
+    
+    for pdc in pdcs:
+        if pdc.status in ["Approved", "Issued", "Held by Payee"] and pdc.cheque_date and pdc.cheque_date <= due_soon_date:
+            pdc.status = "Due Soon"
+            
     return pdcs
 
 @router.get("/{pdc_id}", response_model=PDCIssuedResponse)
@@ -137,19 +141,6 @@ def create_pdc_issued(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # Validate leaf availability
-    leaf = db.query(ChequeLeaf).filter(
-        ChequeLeaf.cheque_number == pdc_in.cheque_number,
-        ChequeLeaf.status == "Available"
-    ).first()
-    
-    if not leaf:
-        raise HTTPException(status_code=400, detail="Cheque leaf not available or doesn't exist")
-        
-    # Check if cheque book belongs to the right bank account
-    if leaf.cheque_book.bank_account_id != pdc_in.bank_account_id:
-        raise HTTPException(status_code=400, detail="Cheque leaf does not belong to selected bank account")
-        
     # Check related references (at least one must be provided)
     if not any([pdc_in.related_property_id, pdc_in.related_loan_id, 
                 pdc_in.related_lpo_id, pdc_in.related_invoice_id, 
@@ -170,10 +161,6 @@ def create_pdc_issued(
     db.add(new_pdc)
     db.flush()
 
-    # Update leaf
-    leaf.status = "Issued"
-    leaf.issued_to = new_pdc.pdc_issued_id
-    
     # Status history
     _add_status_history(db, new_pdc.pdc_issued_id, None, "Draft", current_user.user_id, "Initial Draft")
 

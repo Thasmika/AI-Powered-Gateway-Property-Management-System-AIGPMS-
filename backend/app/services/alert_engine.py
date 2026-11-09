@@ -59,6 +59,9 @@ def run_alert_engine():
         for pdc in active_received:
             days_until = (pdc.cheque_date - today).days
             
+            if days_until <= 14 and pdc.status in ["Received", "Held"]:
+                pdc.status = "Due Soon"
+            
             if days_until in thresholds and days_until > 0:
                 create_alert(
                     db, 
@@ -69,8 +72,6 @@ def run_alert_engine():
                     entity_id=pdc.pdc_received_id,
                     message=f"Cheque {pdc.cheque_number} for AED {pdc.cheque_amount} is due."
                 )
-                if days_until <= 7 and pdc.status != "Due Soon" and pdc.status != "Submitted to Bank":
-                    pdc.status = "Due Soon"
                     
             elif days_until == 0:
                 create_alert(
@@ -102,6 +103,9 @@ def run_alert_engine():
         for pdc in active_issued:
             days_until = (pdc.cheque_date - today).days
             
+            if days_until <= 14 and pdc.status in ["Approved", "Issued", "Held by Payee"]:
+                pdc.status = "Due Soon"
+            
             if days_until in thresholds and days_until > 0:
                 create_alert(
                     db, 
@@ -112,8 +116,6 @@ def run_alert_engine():
                     entity_id=pdc.pdc_issued_id,
                     message=f"Cheque {pdc.cheque_number} for AED {pdc.cheque_amount} is due."
                 )
-                if days_until <= 7 and pdc.status in ["Approved", "Issued", "Held by Payee"]:
-                    pdc.status = "Due Soon"
                     
             elif days_until == 0:
                 create_alert(

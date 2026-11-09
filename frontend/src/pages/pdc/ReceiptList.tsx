@@ -17,6 +17,7 @@ import {
   Cancel as CancelIcon,
 } from '@mui/icons-material';
 import api from '../../services/api';
+import PdfExportButton from '../../components/PdfExportButton';
 
 const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
   Posted: 'success',
@@ -77,7 +78,9 @@ const ReceiptList: React.FC = () => {
             Manage receipt vouchers and multi-cheque rental collections
           </Typography>
         </Box>
-        <Button
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <PdfExportButton title="Rental Collection" />
+          <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => navigate('/pdc/receipts/new')}
@@ -92,6 +95,7 @@ const ReceiptList: React.FC = () => {
         >
           Create Receipt
         </Button>
+        </Box>
       </Stack>
 
       {/* KPI Cards */}

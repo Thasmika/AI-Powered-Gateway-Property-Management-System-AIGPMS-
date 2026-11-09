@@ -10,6 +10,8 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { formatDate, formatDateTime } from '../../utils/dateUtils';
+import PdfExportButton from '../../components/PdfExportButton';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -94,6 +96,7 @@ const PDCIssuedDetail: React.FC = () => {
           <Typography variant="body2" color="text.secondary">Issued PDC Details</Typography>
         </Box>
         <Chip label={pdc.status} color={getStatusColor(pdc.status) as any} />
+        <PdfExportButton />
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
@@ -152,11 +155,11 @@ const PDCIssuedDetail: React.FC = () => {
               </Grid>
               <Grid item xs={6} sm={4}>
                 <Typography variant="caption" color="text.secondary">Cheque Date</Typography>
-                <Typography variant="body1" sx={{ color: 'white' }}>{pdc.cheque_date}</Typography>
+                <Typography variant="body1" sx={{ color: 'white' }}>{formatDate(pdc.cheque_date)}</Typography>
               </Grid>
               <Grid item xs={6} sm={4}>
                 <Typography variant="caption" color="text.secondary">Date Issued</Typography>
-                <Typography variant="body1" sx={{ color: 'white' }}>{pdc.date_issued || '—'}</Typography>
+                <Typography variant="body1" sx={{ color: 'white' }}>{formatDate(pdc.date_issued)}</Typography>
               </Grid>
               
               <Grid item xs={12}>
@@ -183,11 +186,11 @@ const PDCIssuedDetail: React.FC = () => {
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">Approved At</Typography>
-                <Typography variant="body2" sx={{ color: 'white' }}>{pdc.approved_at ? new Date(pdc.approved_at).toLocaleString() : '—'}</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{formatDateTime(pdc.approved_at)}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">Cleared At</Typography>
-                <Typography variant="body2" sx={{ color: 'white' }}>{pdc.cleared_at ? new Date(pdc.cleared_at).toLocaleString() : '—'}</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{formatDateTime(pdc.cleared_at)}</Typography>
               </Box>
             </Box>
           </Paper>

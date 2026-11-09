@@ -10,6 +10,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import { formatDate } from '../../utils/dateUtils';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface Property {
   property_id: string;
@@ -256,7 +258,8 @@ const OwnershipDetail: React.FC = () => {
           <Typography variant="body1" color="text.secondary">Code: {property.property_code}</Typography>
         </Box>
         <Box sx={{ textAlign: 'right' }}>
-          <Box sx={{ mb: 1 }}>
+          <Box sx={{ mb: 1, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+            <PdfExportButton />
             <Button variant="contained" sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }} onClick={() => setAddDialogOpen(true)}>
               Add Co-Owner
             </Button>
@@ -284,7 +287,7 @@ const OwnershipDetail: React.FC = () => {
                 <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
                   {record.legal_owner?.full_name || 'Unknown'} <Chip size="small" label={record.ownership_type} sx={{ ml: 1, bgcolor: '#6366f120', color: '#6366f1' }} />
                 </Typography>
-                <Typography variant="body2" color="text.secondary">Effective: {record.effective_from || 'N/A'}</Typography>
+                <Typography variant="body2" color="text.secondary">Effective: {formatDate(record.effective_from)}</Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Typography variant="h5" sx={{ color: '#10b981', fontWeight: 700 }}>{Number(record.ownership_percentage)}%</Typography>

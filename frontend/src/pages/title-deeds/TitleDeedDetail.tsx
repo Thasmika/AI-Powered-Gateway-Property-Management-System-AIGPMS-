@@ -7,6 +7,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getFileUrl } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface PropertyAcquisitionCost {
   acquisition_id: string;
@@ -131,6 +133,7 @@ const TitleDeedDetail: React.FC = () => {
         <Chip label={titleDeed.ownership_status} sx={{ ml: 'auto', bgcolor: titleDeed.ownership_status === 'Active' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)', color: titleDeed.ownership_status === 'Active' ? '#10b981' : 'white' }} />
         
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <PdfExportButton />
           <Button variant="outlined" component="label" disabled={isUploading} sx={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
             {isUploading ? 'Uploading...' : 'Add File'}
             <input type="file" hidden onChange={handleFileUpload} />
@@ -195,7 +198,7 @@ const TitleDeedDetail: React.FC = () => {
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Issue Date</Typography>
-                <Typography variant="body2" sx={{ color: 'white' }}>{titleDeed.issue_date || '—'}</Typography>
+                <Typography variant="body2" sx={{ color: 'white' }}>{formatDate(titleDeed.issue_date)}</Typography>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Purchased From (Seller)</Typography>

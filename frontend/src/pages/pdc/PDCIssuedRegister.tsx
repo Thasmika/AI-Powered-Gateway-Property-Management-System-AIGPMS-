@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
@@ -14,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import PdfExportButton from '../../components/PdfExportButton';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -148,7 +150,9 @@ const PDCIssuedRegister: React.FC = () => {
             <Typography variant="body2" color="text.secondary">Manage outgoing cheques and approvals</Typography>
           </Box>
         </Box>
-        <Button 
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <PdfExportButton title="PDC Issued Register" />
+          <Button 
           variant="contained" 
           startIcon={<AddIcon />} 
           onClick={() => setOpen(true)}
@@ -156,6 +160,7 @@ const PDCIssuedRegister: React.FC = () => {
         >
           Issue PDC
         </Button>
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
@@ -186,7 +191,7 @@ const PDCIssuedRegister: React.FC = () => {
                       <Typography variant="body2" sx={{ color: 'white' }}>{pdc.payee_name}</Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>{pdc.payee_type}</Typography>
                     </TableCell>
-                    <TableCell><Typography variant="body2" sx={{ color: 'white' }}>{pdc.cheque_date}</Typography></TableCell>
+                    <TableCell><Typography variant="body2" sx={{ color: 'white' }}>{formatDate(pdc.cheque_date)}</Typography></TableCell>
                     <TableCell><Typography variant="body2" sx={{ color: 'white', fontWeight: 600 }}>{Number(pdc.cheque_amount).toLocaleString()}</Typography></TableCell>
                     <TableCell>
                       <Chip label={pdc.status} color={getStatusColor(pdc.status) as any} size="small" />

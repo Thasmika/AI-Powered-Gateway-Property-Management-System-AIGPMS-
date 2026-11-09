@@ -13,7 +13,7 @@ from app.api.deps import get_db, get_current_active_user, require_roles
 from app.models.master_data import (
     MasterBank, MasterCommunity, MasterEmirate, MasterPropertyType,
     MasterExpenseCategory, MasterMaintenanceCategory, MasterPaymentMethod,
-    NotificationTemplate, AIPromptTemplate, ApprovalLimit,
+    NotificationTemplate, AIPromptTemplate, ApprovalLimit, Supplier,
 )
 from app.schemas.master_data import (
     MasterBankCreate, MasterBankUpdate, MasterBankOut,
@@ -26,6 +26,7 @@ from app.schemas.master_data import (
     NotificationTemplateCreate, NotificationTemplateUpdate, NotificationTemplateOut,
     AIPromptTemplateCreate, AIPromptTemplateUpdate, AIPromptTemplateOut,
     ApprovalLimitCreate, ApprovalLimitUpdate, ApprovalLimitOut,
+    SupplierCreate, SupplierUpdate, SupplierOut,
 )
 
 router = APIRouter()
@@ -565,3 +566,73 @@ def update_approval_limit(
     db.commit()
     db.refresh(obj)
     return obj
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 11. SUPPLIERS / PAYEES
+# ════════════════════════════════════════════════════════════════════════════
+
+@router.get("/suppliers", response_model=List[SupplierOut], tags=["Master Data — Suppliers"])
+def list_suppliers(
+    active_only: bool = Query(True),
+    supplier_type: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_active_user),
+):
+    """List all suppliers/payees. Used to populate Payee dropdown in Expense forms."""
+    q = _active_filter(Supplier, db, active_only)
+    if supplier_type:
+        q = q.filter(Supplier.supplier_type == supplier_type)
+    return q.order_by(Supplier.supplier_name).all()
+
+
+@router.post("/suppliers", response_model=SupplierOut, status_code=status.HTTP_201_CREATED,
+             tags=["Master Data — Suppliers"])
+def create_supplier(
+    payload: SupplierCreate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["Accountant", "Administrator", "Managing Director"])),
+):
+    """Create a new supplier/payee. Accountants can add suppliers inline from the Expense form."""
+    existing = db.query(Supplier).filter(
+        Supplier.supplier_name == payload.supplier_name,
+        Supplier.is_active == True,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Supplier '{payload.supplier_name}' already exists.")
+    obj = Supplier(**payload.model_dump())
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+@router.put("/suppliers/{supplier_id}", response_model=SupplierOut, tags=["Master Data — Suppliers"])
+def update_supplier(
+    supplier_id: str,
+    payload: SupplierUpdate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["Accountant", "Administrator", "Managing Director"])),
+):
+    obj = db.query(Supplier).filter(Supplier.supplier_id == supplier_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Supplier not found.")
+    for k, v in payload.model_dump(exclude_none=True).items():
+        setattr(obj, k, v)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+@router.delete("/suppliers/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT,
+               tags=["Master Data — Suppliers"])
+def deactivate_supplier(
+    supplier_id: str,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["Administrator", "Managing Director"])),
+):
+    obj = db.query(Supplier).filter(Supplier.supplier_id == supplier_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Supplier not found.")
+    obj.is_active = False
+    db.commit()

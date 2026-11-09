@@ -35,9 +35,15 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AssignmentIcon from '@mui/icons-material/Assignment';        // Title Deed
 import MoneyOffIcon from '@mui/icons-material/MoneyOff';            // PDC Received
 import PaymentIcon from '@mui/icons-material/Payment';              // PDC Issued
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';    // Cheque Books
+
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';    // Expenses
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; // Loans
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';      // Payment Vouchers
+import LocalAtmIcon from '@mui/icons-material/LocalAtm';             // Labour Camp Cash Receipts
 import SettingsIcon from '@mui/icons-material/Settings';              // Admin
+import HomeWorkIcon from '@mui/icons-material/HomeWork';              // Unit Register
+import AssessmentIcon from '@mui/icons-material/Assessment';         // Reports
+import AlertBell from './AlertBell';
 
 const drawerWidth = 260;
 
@@ -69,30 +75,37 @@ const MainLayout: React.FC = () => {
   // Define sidebar navigation items based on roles
   const getNavItems = () => {
     const items = [
-      // ── Core ─────────────────────────────────────────────────────────────
-      { text: 'Dashboard',             icon: <DashboardIcon />,            path: '/',              roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Maintenance Staff', 'Administrator'] },
-      { text: 'Property Master',        icon: <ApartmentIcon />,            path: '/properties',    roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      { text: 'Title Deeds',            icon: <AssignmentIcon />,           path: '/title-deeds',   roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      { text: 'Investment Dashboard',   icon: <ShowChartIcon />,            path: '/investment-dashboard', roles: ['Managing Director', 'Administrator'] },
-      { text: 'Ownership',              icon: <GavelIcon />,                path: '/ownership',     roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      // ── Tenancy ──────────────────────────────────────────────────────────
-      { text: 'Tenants Registry',       icon: <PeopleIcon />,               path: '/tenants-leases', roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
-      { text: 'Tenancy Contracts',      icon: <ArticleIcon />,              path: '/tenants-leases/leases',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
-      { text: 'Rental Collection',      icon: <ReceiptIcon />,              path: '/pdc/receipts',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
-      // ── PDC ──────────────────────────────────────────────────────────────
-      { text: 'PDC Received',           icon: <MoneyOffIcon />,             path: '/pdc/register',  roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      { text: 'PDC Issued',             icon: <PaymentIcon />,              path: '/pdc-issued',    roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      { text: 'Cheque Books',           icon: <LibraryBooksIcon />,         path: '/cheque-books',  roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      // ── Finance ──────────────────────────────────────────────────────────
-      { text: 'Expenses',               icon: <RequestQuoteIcon />,         path: '/expenses',      roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      { text: 'Finance & Vouchers',     icon: <AccountBalanceWalletIcon />, path: '/finance',       roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      // ── Operations ───────────────────────────────────────────────────────
-      { text: 'Maintenance',            icon: <ConstructionIcon />,         path: '/maintenance',   roles: ['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator'] },
-      { text: 'Labour Camp',            icon: <DomainIcon />,               path: '/labour-camp',   roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
-      // ── AI ───────────────────────────────────────────────────────────────
-      { text: 'AI Assistant',           icon: <ChatIcon />,                 path: '/ai-assistant',  roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Maintenance Staff', 'Administrator'] },
-      // ── Admin ────────────────────────────────────────────────────────────
-      { text: 'System Admin',           icon: <SettingsIcon />,             path: '/admin',         roles: ['Administrator', 'Managing Director'] },
+      // ── Top: Core Operations ──────────────────────────────────────────────
+      { text: 'Property Master',           icon: <ApartmentIcon />,            path: '/properties',                roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Unit Register',             icon: <HomeWorkIcon />,             path: '/unit-register',             roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Title Deeds',               icon: <AssignmentIcon />,           path: '/title-deeds',               roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Ownership',                 icon: <GavelIcon />,                path: '/ownership',                 roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Tenants Registry',          icon: <PeopleIcon />,               path: '/tenants-leases',            roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Tenancy Contracts',         icon: <ArticleIcon />,              path: '/tenants-leases/leases',     roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Rental Collection',         icon: <ReceiptIcon />,              path: '/pdc/receipts',              roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'PDC Received',              icon: <MoneyOffIcon />,             path: '/pdc/register',              roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'PDC Issued',                icon: <PaymentIcon />,              path: '/pdc-issued',                roles: ['Managing Director', 'Accountant', 'Administrator'] },
+
+      { text: 'Expenses',                  icon: <RequestQuoteIcon />,         path: '/expenses',                  roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Payment Vouchers',          icon: <ReceiptLongIcon />,          path: '/payment-vouchers',          roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Loan Register',             icon: <AccountBalanceIcon />,       path: '/loans',                     roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Maintenance',               icon: <ConstructionIcon />,         path: '/maintenance',               roles: ['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator'] },
+      { text: 'Labour Camp',               icon: <DomainIcon />,               path: '/labour-camp',               roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: '  Residents',               icon: <PeopleIcon />,               path: '/labour-camp/residents',     roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+
+      { text: '  Cash Receipts',           icon: <LocalAtmIcon />,             path: '/labour-camp/cash-receipts', roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Reports Centre',            icon: <AssessmentIcon />,           path: '/reports',                   roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Maintenance Staff', 'Administrator'] },
+      // ── Bottom: Analytics & Admin ─────────────────────────────────────────
+      { text: 'Dashboard',                 icon: <DashboardIcon />,            path: '/',                          roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Maintenance Staff', 'Administrator'] },
+      { text: 'Finance Dashboard',         icon: <AccountBalanceIcon />,       path: '/dashboard/finance',         roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Property Dashboard',        icon: <DomainIcon />,               path: '/dashboard/property',        roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Maintenance Dashboard',     icon: <ConstructionIcon />,         path: '/dashboard/maintenance',     roles: ['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator'] },
+      { text: 'Labour Camp Dashboard',     icon: <PeopleIcon />,               path: '/dashboard/labour-camp',     roles: ['Managing Director', 'Camp Supervisor', 'Administrator'] },
+      { text: 'Investment Dashboard',      icon: <ShowChartIcon />,            path: '/investment-dashboard',      roles: ['Managing Director', 'Administrator'] },
+      { text: 'AI Assistant',              icon: <ChatIcon />,                 path: '/ai-assistant',              roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Maintenance Staff', 'Administrator'] },
+      { text: 'System Admin',              icon: <SettingsIcon />,             path: '/admin',                     roles: ['Administrator', 'Managing Director'] },
+      { text: '  Bank Master',             icon: <AccountBalanceIcon />,       path: '/admin/master/banks',        roles: ['Administrator', 'Managing Director'] },
+      { text: '  Company Bank Accounts',   icon: <AccountBalanceIcon />,       path: '/admin/company-banks',       roles: ['Administrator', 'Managing Director'] },
     ];
 
     return items.filter(item => role && item.roles.includes(role));
@@ -142,10 +155,7 @@ const MainLayout: React.FC = () => {
 
           {/* User profile actions */}
           <Box className="flex items-center gap-4">
-            <IconButton color="inherit" className="relative hover:bg-white/5">
-              <NotificationsIcon />
-              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-red-500 border border-[#0f172a]"></span>
-            </IconButton>
+            <AlertBell />
 
             <Box className="flex items-center gap-2 cursor-pointer hover:bg-white/5 p-1 rounded-lg" onClick={handleProfileMenuOpen}>
               <Avatar

@@ -93,7 +93,9 @@ class PDCReceivedResponse(BaseModel):
     property_id: str
     unit_id: Optional[str] = None
     tenant_id: str
+    tenant_name: Optional[str] = None
     lease_id: str
+    lease_number: Optional[str] = None
     lease_version_id: str
     receivable_id: Optional[str] = None
     beneficiary_allocation_ref: Optional[str] = None
@@ -139,6 +141,7 @@ class PDCReceivedUpdate(BaseModel):
     cheque_amount: Optional[Decimal] = None
     rental_period_from: Optional[date] = None
     rental_period_to: Optional[date] = None
+    current_cheque_location: Optional[str] = None
     remarks: Optional[str] = None
     status: Optional[str] = None
 

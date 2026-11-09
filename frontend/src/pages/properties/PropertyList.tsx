@@ -19,6 +19,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface PropertyUnit {
   unit_id: string;
@@ -236,10 +237,13 @@ const PropertyList: React.FC = () => {
               }} />
             </IconButton>
           </Tooltip>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/properties/new")}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <PdfExportButton title="Properties Master" />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/properties/new")}
             sx={{ bgcolor: "#6366f1", "&:hover": { bgcolor: "#4f46e5" } }}>
             Add Property
           </Button>
+          </Box>
         </Box>
       </Box>
 

@@ -63,6 +63,28 @@ add_column_if_missing("title_deeds", "loan_number",              "VARCHAR(100)")
 print("\n--- Migrating lease_versions ---")
 add_column_if_missing("lease_versions", "premises_no",           "VARCHAR(100)")
 
+print("\n--- Creating suppliers table ---")
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='suppliers'")
+if not cursor.fetchone():
+    cursor.execute("""
+        CREATE TABLE suppliers (
+            supplier_id    VARCHAR(36) PRIMARY KEY,
+            supplier_name  VARCHAR(200) NOT NULL,
+            supplier_type  VARCHAR(100),
+            contact_number VARCHAR(50),
+            email          VARCHAR(150),
+            is_active      BOOLEAN DEFAULT 1,
+            created_date   DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_date   DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    print("  + suppliers table created")
+else:
+    print("  [OK] suppliers already exists")
+    add_column_if_missing("suppliers", "supplier_type",   "VARCHAR(100)")
+    add_column_if_missing("suppliers", "contact_number",  "VARCHAR(50)")
+    add_column_if_missing("suppliers", "email",           "VARCHAR(150)")
+
 conn.commit()
 conn.close()
-print("\n✅ Migration complete.")
+print("\nMigration complete.")

@@ -9,6 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface Owner {
   owner_id: string;
@@ -124,6 +125,7 @@ const OwnershipList: React.FC = () => {
             <Typography variant="body2" color="text.secondary">Property-wise co-ownership structures</Typography>
           </Box>
         </Box>
+        <PdfExportButton title={'Ownership & Beneficiaries'} />
       </Box>
       
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

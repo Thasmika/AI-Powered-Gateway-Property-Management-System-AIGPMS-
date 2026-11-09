@@ -12,6 +12,7 @@ import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } 
 
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface Tenant {
   tenant_id: string;
@@ -86,10 +87,13 @@ const TenantList: React.FC = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/tenants-leases/tenants/new')}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <PdfExportButton title="Tenants Master" />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/tenants-leases/tenants/new')}
             sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
             Add Tenant
           </Button>
+          </Box>
         </Box>
       </Box>
       

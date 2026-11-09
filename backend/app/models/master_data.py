@@ -169,3 +169,20 @@ class ApprovalLimit(Base):
     is_active = Column(Boolean, default=True)
     created_date = Column(DateTime, default=datetime.utcnow)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ── 11. Suppliers / Payees ────────────────────────────────────────────────────
+
+class Supplier(Base):
+    """Master list of suppliers and payees used across expenses and payment vouchers."""
+    __tablename__ = "suppliers"
+
+    supplier_id    = Column(String(36), primary_key=True, default=generate_uuid)
+    supplier_name  = Column(String(200), nullable=False)
+    # Agent | Construction Company | Material Supplier | Government | Utility | Other
+    supplier_type  = Column(String(100), nullable=True)
+    contact_number = Column(String(50), nullable=True)
+    email          = Column(String(150), nullable=True)
+    is_active      = Column(Boolean, default=True)
+    created_date   = Column(DateTime, default=datetime.utcnow)
+    updated_date   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

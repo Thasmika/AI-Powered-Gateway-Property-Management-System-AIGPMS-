@@ -10,6 +10,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { useAuth } from '../../context/AuthContext';
+import PdfExportButton from '../../components/PdfExportButton';
 
 interface NotificationTemplate {
   template_id: string;
@@ -90,6 +91,7 @@ const NotificationTemplates: React.FC = () => {
             {templates.length} alert templates across {modules.length} modules
           </Typography>
         </Box>
+        <Box sx={{ ml: 'auto' }}><PdfExportButton title="Notification Templates" /></Box>
       </Box>
 
       <Paper elevation={0} sx={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 2, p: 2.5, mb: 3 }}>
