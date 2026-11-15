@@ -4,7 +4,9 @@ import {
   TableHead, TableRow, Chip, CircularProgress, Avatar, Alert, IconButton,
   Tooltip, Stack, TextField, InputAdornment, FormControl, InputLabel,
   Select, MenuItem, Card, CardContent, LinearProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Snackbar,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -90,6 +92,67 @@ const UnitRegister: React.FC = () => {
   const [unitTypeFilter, setUnitTypeFilter] = useState('');
   const [propertyFilter, setPropertyFilter] = useState('');
   const [contractFilter, setContractFilter] = useState(''); // '' | 'with' | 'without'
+
+  // Edit dialog
+  const emptyEdit = {
+    unit_id: '', property_id: '', unit_number: '', unit_type: '', floor_number: '',
+    balcony: 'Without Balcony', area_sqm: '', plot_number: '', makani_number: '',
+    status: 'Vacant', unit_description: '',
+  };
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(emptyEdit);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const openEdit = (unit: Unit) => {
+    setEditError(null);
+    setEditData({
+      unit_id: unit.unit_id,
+      property_id: unit.property_id,
+      unit_number: unit.unit_number || '',
+      unit_type: unit.unit_type || '',
+      floor_number: unit.floor_number || '',
+      balcony: unit.balcony || 'Without Balcony',
+      area_sqm: unit.area_sqm != null ? String(unit.area_sqm) : '',
+      plot_number: unit.plot_number || '',
+      makani_number: unit.makani_number || '',
+      status: unit.status || 'Vacant',
+      unit_description: unit.unit_description || '',
+    });
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editData.unit_number.trim()) {
+      setEditError('Unit number is required');
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const payload = {
+        unit_number: editData.unit_number.trim(),
+        unit_type: editData.unit_type || null,
+        floor_number: editData.floor_number || null,
+        balcony: editData.balcony || null,
+        area_sqm: editData.area_sqm !== '' ? parseFloat(editData.area_sqm) : null,
+        plot_number: editData.plot_number || null,
+        makani_number: editData.makani_number || null,
+        status: editData.status,
+        unit_description: editData.unit_description || null,
+      };
+      const res = await api.put(`/properties/${editData.property_id}/units/${editData.unit_id}`, payload);
+      setUnits(prev => prev.map(u => (u.unit_id === editData.unit_id ? { ...u, ...res.data } : u)));
+      setEditOpen(false);
+      setToast(`Unit ${payload.unit_number} updated`);
+    } catch (e: any) {
+      const detail = e.response?.data?.detail;
+      setEditError(typeof detail === 'string' ? detail : e.message || 'Failed to update unit');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -482,6 +545,15 @@ const UnitRegister: React.FC = () => {
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="Edit Unit">
+                          <IconButton
+                            size="small"
+                            onClick={e => { e.stopPropagation(); openEdit(unit); }}
+                            sx={{ ml: 0.5, color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.15)' } }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   );
@@ -491,6 +563,78 @@ const UnitRegister: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* ── Edit Unit Dialog ──────────────────────────────────── */}
+      <Dialog open={editOpen} onClose={() => !editSaving && setEditOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Edit Unit
+          <Typography variant="body2" color="text.secondary">
+            {properties[editData.property_id]?.property_name || ''}
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          {editError && <Alert severity="error" sx={{ mb: 2 }}>{editError}</Alert>}
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Unit Number" required fullWidth value={editData.unit_number}
+                onChange={e => setEditData({ ...editData, unit_number: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Unit Type" fullWidth value={editData.unit_type}
+                onChange={e => setEditData({ ...editData, unit_type: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Floor Number" fullWidth value={editData.floor_number}
+                onChange={e => setEditData({ ...editData, floor_number: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select label="Balcony" fullWidth value={editData.balcony}
+                onChange={e => setEditData({ ...editData, balcony: e.target.value })}>
+                {['With Balcony', 'Without Balcony'].map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Area (SQM)" type="number" fullWidth value={editData.area_sqm}
+                onChange={e => setEditData({ ...editData, area_sqm: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select label="Status" fullWidth value={editData.status}
+                onChange={e => setEditData({ ...editData, status: e.target.value })}>
+                {Array.from(new Set(['Vacant', 'Occupied', 'Under Maintenance', 'Used By Staff', 'Office Use', editData.status]))
+                  .filter(Boolean)
+                  .map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Plot Number" fullWidth value={editData.plot_number}
+                onChange={e => setEditData({ ...editData, plot_number: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Makani Number" fullWidth value={editData.makani_number}
+                onChange={e => setEditData({ ...editData, makani_number: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField label="Description" fullWidth multiline minRows={2} value={editData.unit_description}
+                onChange={e => setEditData({ ...editData, unit_description: e.target.value })} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setEditOpen(false)} disabled={editSaving}>Cancel</Button>
+          <Button variant="contained" onClick={handleEditSave} disabled={editSaving}
+            startIcon={editSaving ? <CircularProgress size={16} color="inherit" /> : <EditIcon />}>
+            {editSaving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast(null)}
+        message={toast}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      />
 
       {/* ── Footer summary ────────────────────────────────────── */}
       {units.length > 0 && (

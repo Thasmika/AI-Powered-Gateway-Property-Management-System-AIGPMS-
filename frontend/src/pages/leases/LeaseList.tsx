@@ -17,6 +17,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import dayjs from 'dayjs';
 import PdfExportButton from '../../components/PdfExportButton';
+import * as XLSX from 'xlsx';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 interface Lease {
   lease_id: string;
@@ -42,6 +44,7 @@ const LeaseList: React.FC = () => {
   const [expirationFilter, setExpirationFilter] = useState('');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<Lease | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -151,6 +154,125 @@ const LeaseList: React.FC = () => {
     return matchesSearch && matchesStatus && matchesExpiration;
   });
 
+  // ── Excel export: always pulls fresh data from the server at click time ──
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const [leasesRes, tenantsRes, propsRes] = await Promise.all([
+        api.get('/leases'),
+        api.get('/tenants'),
+        api.get('/properties'),
+      ]);
+      const freshLeases: Lease[] = leasesRes.data;
+      const tenantMap: Record<string, any> = {};
+      tenantsRes.data.forEach((t: any) => { tenantMap[t.tenant_id] = t; });
+      const propMap: Record<string, string> = {};
+      propsRes.data.forEach((p: any) => { propMap[p.property_id] = p.property_name; });
+
+      const toDate = (d: any) => (d ? dayjs(d).toDate() : '');
+      const toNum = (n: any) => (n === null || n === undefined || n === '' ? '' : Number(n));
+      const pickCurrent = (l: any) =>
+        l.versions?.find((v: any) => v.is_current_version) || (l.versions?.length ? l.versions[l.versions.length - 1] : null);
+      const today = dayjs().startOf('day');
+
+      const sorted = [...freshLeases].sort((a, b) => {
+        const ea = pickCurrent(a)?.contract_end_date || '';
+        const eb = pickCurrent(b)?.contract_end_date || '';
+        return String(ea).localeCompare(String(eb));
+      });
+
+      const contractRows = sorted.map((l: any, i) => {
+        const v = pickCurrent(l) || {};
+        const t = tenantMap[l.tenant_id] || {};
+        const end = v.contract_end_date ? dayjs(v.contract_end_date).startOf('day') : null;
+        return {
+          '#': i + 1,
+          'Lease Number': l.lease_number,
+          'Property': propMap[l.property_id] || '',
+          'Unit Number': l.unit_number || '',
+          'Tenant': t.full_name || l.tenant_id,
+          'Trade Name': t.trade_name || '',
+          'Tenant Type': t.tenant_type || '',
+          'Tenant ID Type': t.id_type || '',
+          'Tenant ID Number': t.id_number || '',
+          'Nationality': t.nationality || '',
+          'Phone': t.phone || '',
+          'Email': t.email || '',
+          'Lease Type': l.lease_type || '',
+          'Lease Date': toDate(l.lease_date),
+          'Status': getEffectiveStatus(l),
+          'Version No.': v.version_number ?? '',
+          'Contract Start': toDate(v.contract_start_date),
+          'Contract End': toDate(v.contract_end_date),
+          'Days to Expiry': end ? end.diff(today, 'day') : '',
+          'Currency': v.currency || 'AED',
+          'Annual Rent': toNum(v.annual_rent),
+          'Contract Value': toNum(v.contract_value),
+          'Payment Frequency': v.payment_frequency || '',
+          'No. of Cheques': toNum(v.number_of_cheques),
+          'Security Deposit': toNum(v.security_deposit),
+          'Agent Commission': toNum(v.agent_commission),
+          'Municipality Fee': toNum(v.municipality_fee),
+          'Ejari Number': v.ejari_number || '',
+          'Premises No.': v.premises_no || '',
+          'Contract Reference': v.contract_reference || '',
+          'Renewal Reason': v.renewal_reason || '',
+          'Notes': v.notes || '',
+        };
+      });
+
+      const scheduleRows: any[] = [];
+      sorted.forEach((l: any) => {
+        const v = pickCurrent(l);
+        (v?.payment_schedules || []).forEach((p: any) => {
+          scheduleRows.push({
+            'Lease Number': l.lease_number,
+            'Property': propMap[l.property_id] || '',
+            'Unit Number': l.unit_number || '',
+            'Tenant': tenantMap[l.tenant_id]?.full_name || l.tenant_id,
+            ...Object.fromEntries(
+              Object.entries(p)
+                .filter(([k]) => !k.endsWith('_id'))
+                .map(([k, val]) => [
+                  k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                  /date|period_from|period_to/.test(k) && val ? dayjs(val as any).toDate()
+                    : k === 'amount' ? toNum(val) : (val ?? ''),
+                ])
+            ),
+          });
+        });
+      });
+
+      const makeSheet = (rows: any[]) => {
+        const ws = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: 'dd/mm/yyyy' });
+        const headers = rows.length ? Object.keys(rows[0]) : [];
+        ws['!cols'] = headers.map(h => ({
+          wch: Math.min(40, Math.max(h.length, ...rows.map(r => String(r[h] instanceof Date ? '00/00/0000' : r[h] ?? '').length)) + 2),
+        }));
+        // number formats for money columns
+        const money = new Set(['Annual Rent', 'Contract Value', 'Security Deposit', 'Agent Commission', 'Municipality Fee', 'Amount']);
+        headers.forEach((h, c) => {
+          if (!money.has(h)) return;
+          for (let r = 1; r <= rows.length; r++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            if (cell && cell.t === 'n') cell.z = '#,##0.00';
+          }
+        });
+        ws['!autofilter'] = { ref: ws['!ref'] || 'A1' };
+        return ws;
+      };
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, makeSheet(contractRows), 'Tenancy Contracts');
+      if (scheduleRows.length) XLSX.utils.book_append_sheet(wb, makeSheet(scheduleRows), 'Payment Schedules');
+      XLSX.writeFile(wb, `Tenancy_Contracts_Register_${dayjs().format('YYYY-MM-DD_HHmm')}.xlsx`);
+    } catch (e: any) {
+      setError(e.response?.data?.detail || e.message || 'Failed to export Excel');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // KPI Stats — use effective status so expired-by-date contracts are counted correctly
   const byEffectiveStatus = (s: string) => leases.filter(l => getEffectiveStatus(l) === s).length;
   const kpis = [
@@ -180,6 +302,15 @@ const LeaseList: React.FC = () => {
         <Stack direction="row" spacing={1} alignItems="center">
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <PdfExportButton title="Tenancy Contracts Register" />
+            <Button
+              variant="outlined"
+              onClick={handleExportExcel}
+              disabled={exporting}
+              startIcon={exporting ? <CircularProgress size={16} color="inherit" /> : <FileDownloadIcon />}
+              sx={{ color: '#10b981', borderColor: '#10b98166', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.08)' } }}
+            >
+              {exporting ? 'Exporting...' : 'Download Excel'}
+            </Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/tenants-leases/leases/new')}
             sx={{ bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}>
             Add Lease
@@ -276,6 +407,7 @@ const LeaseList: React.FC = () => {
                 <TableCell>Unit Name</TableCell>
                 <TableCell>Unit Number</TableCell>
                 <TableCell>Tenant</TableCell>
+                <TableCell align="right">Annual Rent</TableCell>
                 <TableCell>Expiry Date</TableCell>
                 <TableCell align="center">Status</TableCell>
                 <TableCell align="center">Actions</TableCell>
@@ -283,9 +415,9 @@ const LeaseList: React.FC = () => {
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6 }}><CircularProgress size={32} /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6 }}><CircularProgress size={32} /></TableCell></TableRow>
               ) : filteredLeases.length === 0 ? (
-                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>No tenancy contracts found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>No tenancy contracts found.</TableCell></TableRow>
               ) : (
                 [...filteredLeases].sort((a, b) => {
                   const aVersion = a.versions?.find((v: any) => v.is_current_version) || (a.versions?.length ? a.versions[a.versions.length - 1] : null);
@@ -306,6 +438,13 @@ const LeaseList: React.FC = () => {
                       <TableCell><Typography variant="body2" color="text.secondary">{propName}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{lease.unit_number || '—'}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{tenants[lease.tenant_id] || lease.tenant_id}</Typography></TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#34d399' }}>
+                          {currentVersion?.annual_rent != null && currentVersion.annual_rent !== ''
+                            ? `${currentVersion.currency || 'AED'} ${Number(currentVersion.annual_rent).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : '—'}
+                        </Typography>
+                      </TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{expiryDate}</Typography></TableCell>
                       <TableCell align="center">
                         <Chip label={effectiveStatus} size="small" sx={{ bgcolor: statusColors.bg, color: statusColors.text, fontWeight: 600, fontSize: '0.7rem' }} />
