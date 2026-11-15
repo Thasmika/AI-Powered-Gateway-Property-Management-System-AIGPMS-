@@ -7,7 +7,7 @@ Endpoints:
   GET/POST   /api/v1/loans/{id}/instalments
   PUT        /api/v1/loans/{id}/instalments/{inst_id}
   GET/POST   /api/v1/payment-vouchers
-  GET        /api/v1/payment-vouchers/{id}
+  GET/PUT/DELETE /api/v1/payment-vouchers/{id}
   POST       /api/v1/payment-vouchers/{id}/approve
   POST       /api/v1/payment-vouchers/{id}/reject
 """
@@ -21,11 +21,12 @@ from app.database.session import get_db
 from app.api.deps import get_current_active_user, require_roles
 from app.models.auth import User
 from app.models.loans import Loan, LoanInstalment, LoanDocument, PaymentVoucher
+from app.models.pdc import PDCIssued
 from app.schemas.loans import (
     LoanCreate, LoanUpdate, LoanResponse,
     LoanInstalmentCreate, LoanInstalmentUpdate, LoanInstalmentResponse,
     LoanDocumentCreate, LoanDocumentResponse,
-    PaymentVoucherCreate, PaymentVoucherResponse,
+    PaymentVoucherCreate, PaymentVoucherUpdate, PaymentVoucherResponse,
     PaymentVoucherApproveAction, PaymentVoucherRejectAction,
 )
 
@@ -61,18 +62,68 @@ def create_payment_voucher(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"])),
 ):
-    count = db.query(PaymentVoucher).count() + 1
-    voucher_no = f"PV-{datetime.now().strftime('%Y%m')}-{count:04d}"
+    # Use the highest existing sequence (not row count) so deletions never cause duplicates.
+    max_seq = 0
+    for (existing_no,) in db.query(PaymentVoucher.voucher_number).all():
+        try:
+            max_seq = max(max_seq, int(str(existing_no).rsplit("-", 1)[-1]))
+        except (ValueError, TypeError):
+            continue
+    voucher_no = f"PV-{datetime.now().strftime('%Y%m')}-{max_seq + 1:04d}"
+    # Vouchers are issued directly on creation — no separate approval step.
     pv = PaymentVoucher(
         **data.model_dump(),
         voucher_number=voucher_no,
-        approval_status="Pending",
+        approval_status="Approved",
         prepared_by=current_user.user_id,
+        approved_by=current_user.user_id,
+        approved_at=datetime.utcnow(),
     )
     db.add(pv)
     db.commit()
     db.refresh(pv)
     return pv
+
+
+@router.put("/payment-vouchers/{voucher_id}", response_model=PaymentVoucherResponse, tags=["Finance & Loans"])
+def update_payment_voucher(
+    voucher_id: str,
+    data: PaymentVoucherUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"])),
+):
+    pv = db.query(PaymentVoucher).filter(PaymentVoucher.voucher_id == voucher_id).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Payment Voucher not found")
+    updates = data.model_dump(exclude_unset=True)
+    if "payee_name" in updates and not (updates["payee_name"] or "").strip():
+        raise HTTPException(status_code=400, detail="Payee name is required")
+    if "amount" in updates and (updates["amount"] is None or updates["amount"] <= 0):
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    for k, v in updates.items():
+        setattr(pv, k, v)
+    pv.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(pv)
+    return pv
+
+
+@router.delete("/payment-vouchers/{voucher_id}", status_code=204, tags=["Finance & Loans"])
+def delete_payment_voucher(
+    voucher_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"])),
+):
+    pv = db.query(PaymentVoucher).filter(PaymentVoucher.voucher_id == voucher_id).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Payment Voucher not found")
+    # Unlink any issued PDCs that point to this voucher.
+    db.query(PDCIssued).filter(PDCIssued.related_payment_voucher_id == voucher_id).update(
+        {PDCIssued.related_payment_voucher_id: None}, synchronize_session=False
+    )
+    db.delete(pv)
+    db.commit()
+    return None
 
 
 @router.get("/payment-vouchers/{voucher_id}", response_model=PaymentVoucherResponse, tags=["Finance & Loans"])

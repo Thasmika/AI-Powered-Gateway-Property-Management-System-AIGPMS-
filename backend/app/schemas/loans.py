@@ -139,6 +139,20 @@ class PaymentVoucherCreate(PaymentVoucherBase):
     pass
 
 
+class PaymentVoucherUpdate(BaseModel):
+    payee_name: Optional[str] = None
+    payee_type: Optional[str] = None
+    amount: Optional[Decimal] = None
+    currency: Optional[str] = None
+    purpose: Optional[str] = None
+    payment_method: Optional[str] = None
+    expense_id: Optional[str] = None
+    loan_id: Optional[str] = None
+    property_id: Optional[str] = None
+    attachment_path: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class PaymentVoucherApproveAction(BaseModel):
     reason: Optional[str] = None
 

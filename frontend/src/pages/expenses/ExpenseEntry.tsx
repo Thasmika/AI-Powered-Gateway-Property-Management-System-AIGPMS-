@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box, Typography, Paper, Grid, TextField, MenuItem, Button, Switch,
   FormControlLabel, Table, TableBody, TableCell, TableContainer, TableHead,
@@ -58,6 +58,10 @@ interface Supplier {
 const ExpenseEntry: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { expenseId } = useParams<{ expenseId: string }>();
+  const isEdit = !!expenseId;
+  // Set when loading an existing expense so the class-change effect doesn't wipe its category
+  const skipClassReset = useRef(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,9 +149,55 @@ const ExpenseEntry: React.FC = () => {
         setCostCentres(ccRes.data);
         setProperties(propRes.data);
         await fetchCategories(expenseClass);
-        await fetchSuppliers();
-      } catch (e) {
+        const supRes = await api.get('/master/suppliers', { params: { active_only: true } }).catch(() => ({ data: [] }));
+        setSuppliers(supRes.data);
+
+        if (isEdit) {
+          const { data: exp } = await api.get(`/expenses/${expenseId}`);
+          const cls: 'General' | 'Property' = exp.expense_class === 'Property' ? 'Property' : 'General';
+          if (cls !== expenseClass) {
+            skipClassReset.current = true;
+            setExpenseClass(cls);
+          }
+          const s = (v: any) => (v === null || v === undefined ? '' : String(v));
+          setForm({
+            category_id: s(exp.category_id),
+            payee_name: s(exp.payee_name),
+            description: s(exp.description),
+            invoice_date: exp.invoice_date ? String(exp.invoice_date).slice(0, 10) : '',
+            invoice_number: s(exp.invoice_number),
+            amount: s(exp.amount),
+            tax_amount: s(exp.tax_amount ?? '0'),
+            total_amount: s(exp.total_amount),
+            payment_method: s(exp.payment_method),
+            payment_voucher_ref: s(exp.payment_voucher_ref),
+            pdc_issued_id: s(exp.pdc_issued_id),
+            cost_centre_id: s(exp.cost_centre_id),
+            property_id: s(exp.property_id),
+            unit_id: s(exp.unit_id),
+            maintenance_ticket_id: s(exp.maintenance_ticket_id),
+            lpo_id: s(exp.lpo_id),
+            is_shared: !!exp.is_shared,
+            attachment_path: s(exp.attachment_path),
+            notes: s(exp.notes),
+          });
+          const sup = (supRes.data as Supplier[]).find(x => x.supplier_name === exp.payee_name);
+          setSelectedSupplier(sup || (exp.payee_name
+            ? { supplier_id: '', supplier_name: exp.payee_name, supplier_type: null, is_active: true }
+            : null));
+          setAllocations((exp.allocations || []).map((a: any) => ({
+            id: crypto.randomUUID(),
+            property_id: s(a.property_id),
+            cost_centre_id: s(a.cost_centre_id),
+            allocation_method: a.allocation_method || 'Percentage',
+            allocation_percentage: s(a.allocation_percentage),
+            allocation_amount: s(a.allocation_amount),
+            notes: s(a.notes),
+          })));
+        }
+      } catch (e: any) {
         console.error('Failed to load reference data', e);
+        if (isEdit) setError(e.response?.data?.detail || 'Failed to load expense');
       } finally {
         setLoading(false);
       }
@@ -158,9 +208,21 @@ const ExpenseEntry: React.FC = () => {
   // Re-fetch categories when expense class changes
   useEffect(() => {
     fetchCategories(expenseClass);
+    if (skipClassReset.current) {
+      skipClassReset.current = false;
+      return;
+    }
     setSelectedCategory(null);
     setForm(f => ({ ...f, category_id: '' }));
   }, [expenseClass]);
+
+  // In edit mode, pick the saved category once the category list is available
+  useEffect(() => {
+    if (form.category_id && selectedCategory?.category_id !== form.category_id) {
+      const match = categories.find(c => c.category_id === form.category_id);
+      if (match) setSelectedCategory(match);
+    }
+  }, [categories, form.category_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-calculate total
   useEffect(() => {
@@ -308,11 +370,17 @@ const ExpenseEntry: React.FC = () => {
       Object.keys(payload).forEach(k => {
         if ((payload as any)[k] === '') (payload as any)[k] = null;
       });
-      await api.post('/expenses', payload);
-      setSuccess('Expense created successfully!');
+      if (isEdit) {
+        await api.put(`/expenses/${expenseId}`, payload);
+        setSuccess('Expense updated successfully!');
+      } else {
+        await api.post('/expenses', payload);
+        setSuccess('Expense created successfully!');
+      }
       setTimeout(() => navigate('/expenses'), 1200);
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Failed to create expense');
+      const detail = e.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : (isEdit ? 'Failed to update expense' : 'Failed to create expense'));
     } finally {
       setSaving(false);
     }
@@ -385,8 +453,8 @@ const ExpenseEntry: React.FC = () => {
           <ReceiptLongIcon sx={{ color: '#fff' }} />
         </Box>
         <Box>
-          <Typography variant="h5" fontWeight={700} sx={{ color: '#e2e8f0' }}>New Expense</Typography>
-          <Typography variant="caption" sx={{ color: '#64748b' }}>Record a general or property-related expense</Typography>
+          <Typography variant="h5" fontWeight={700} sx={{ color: '#e2e8f0' }}>{isEdit ? 'Edit Expense' : 'New Expense'}</Typography>
+          <Typography variant="caption" sx={{ color: '#64748b' }}>{isEdit ? 'Update the details of this expense' : 'Record a general or property-related expense'}</Typography>
         </Box>
       </Box>
 
@@ -679,7 +747,7 @@ const ExpenseEntry: React.FC = () => {
           disabled={saving}
           sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', fontWeight: 600, borderRadius: 2, px: 4 }}
         >
-          {saving ? 'Saving…' : 'Create Expense'}
+          {saving ? 'Saving…' : isEdit ? 'Update Expense' : 'Create Expense'}
         </Button>
       </Box>
 

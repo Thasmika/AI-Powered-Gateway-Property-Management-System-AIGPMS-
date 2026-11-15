@@ -25,7 +25,7 @@ const classColor: Record<string, string> = { General: '#6366f1', Property: '#f59
 
 const ExpenseDetail: React.FC = () => {
   const { expenseId } = useParams<{ expenseId: string }>();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const navigate = useNavigate();
 
   const [expense, setExpense] = useState<any>(null);
@@ -51,7 +51,7 @@ const ExpenseDetail: React.FC = () => {
 
   useEffect(() => { fetchExpense(); }, [expenseId]);
 
-  const canApprove = user?.role === 'Managing Director' || user?.role === 'Administrator';
+  const canApprove = role === 'Managing Director' || role === 'Administrator';
 
   const handleApprove = async () => {
     setActionLoading(true);

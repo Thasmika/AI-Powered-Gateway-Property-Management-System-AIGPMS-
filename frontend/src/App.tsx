@@ -398,6 +398,14 @@ const App: React.FC = () => {
                 }
               />
               <Route
+                path="expenses/:expenseId/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
+                    <ExpenseEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="expenses/:expenseId"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>

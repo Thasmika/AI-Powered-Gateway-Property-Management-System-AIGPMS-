@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Chip, CircularProgress, Alert, Tabs, Tab,
-  TextField, MenuItem, Grid, Tooltip, IconButton, Stack
+  TextField, MenuItem, Grid, Tooltip, IconButton, Stack,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 );
 
 const ExpenseList: React.FC = () => {
-  const { user } = useAuth();
+  const { role } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState(0); // 0 = General, 1 = Property
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -64,32 +65,28 @@ const ExpenseList: React.FC = () => {
 
   useEffect(() => { fetchExpenses(); }, [tab, filterStatus, filterDateFrom, filterDateTo]);
 
-  const canApprove = user?.role === 'Managing Director' || user?.role === 'Administrator';
+  const canModify = ['Managing Director', 'Accountant', 'Administrator'].includes(role || '');
 
-  const handleApprove = async (expId: string) => {
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await api.post(`/expenses/${expId}/approve`, { reason: 'Approved via list action' });
-      setActionMsg('Expense approved successfully');
+      await api.delete(`/expenses/${deleteTarget.expense_id}`);
+      setActionMsg(`Expense ${deleteTarget.expense_reference} deleted`);
+      setDeleteTarget(null);
       fetchExpenses();
     } catch (e: any) {
-      setActionMsg(e.response?.data?.detail || 'Approval failed');
-    }
-  };
-
-  const handleReject = async (expId: string) => {
-    const reason = prompt('Enter rejection reason:');
-    if (!reason) return;
-    try {
-      await api.post(`/expenses/${expId}/reject`, { reason });
-      setActionMsg('Expense rejected');
-      fetchExpenses();
-    } catch (e: any) {
-      setActionMsg(e.response?.data?.detail || 'Rejection failed');
+      setActionMsg(e.response?.data?.detail || 'Delete failed');
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
   const totalAmount = expenses.reduce((s, e) => s + parseFloat(e.total_amount || 0), 0);
-  const pendingCount = expenses.filter(e => e.approval_status === 'Pending').length;
 
   const renderTable = (rows: any[]) => (
     <TableContainer component={Paper} sx={{ borderRadius: 2, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -150,16 +147,16 @@ const ExpenseList: React.FC = () => {
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {canApprove && exp.approval_status === 'Pending' && (
+                  {canModify && (
                     <>
-                      <Tooltip title="Approve">
-                        <IconButton size="small" onClick={() => handleApprove(exp.expense_id)} sx={{ color: '#22c55e' }}>
-                          <CheckCircleIcon fontSize="small" />
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => navigate(`/expenses/${exp.expense_id}/edit`)} sx={{ color: '#f59e0b' }}>
+                          <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Reject">
-                        <IconButton size="small" onClick={() => handleReject(exp.expense_id)} sx={{ color: '#ef4444' }}>
-                          <CancelIcon fontSize="small" />
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => setDeleteTarget(exp)} sx={{ color: '#ef4444' }}>
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </>
@@ -184,7 +181,7 @@ const ExpenseList: React.FC = () => {
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ color: '#e2e8f0' }}>Expense Management</Typography>
             <Typography variant="caption" sx={{ color: '#64748b' }}>
-              {expenses.length} records · AED {totalAmount.toLocaleString('en-AE', { minimumFractionDigits: 2 })} total · {pendingCount} pending approval
+              {expenses.length} records · AED {totalAmount.toLocaleString('en-AE', { minimumFractionDigits: 2 })} total
             </Typography>
           </Box>
         </Box>
@@ -270,6 +267,25 @@ const ExpenseList: React.FC = () => {
           )}
         </Box>
       </Paper>
+
+      {/* Delete confirmation */}
+      <Dialog open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)}
+        PaperProps={{ sx: { background: '#1e2235', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 2 } }}>
+        <DialogTitle sx={{ color: '#e2e8f0', fontWeight: 700 }}>Delete Expense</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: '#94a3b8' }}>
+            Delete expense <strong style={{ color: '#e2e8f0' }}>{deleteTarget?.expense_reference}</strong> ({deleteTarget?.payee_name},
+            AED {parseFloat(deleteTarget?.total_amount || 0).toLocaleString('en-AE', { minimumFractionDigits: 2 })})? This cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting} sx={{ color: '#94a3b8' }}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <DeleteIcon />}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

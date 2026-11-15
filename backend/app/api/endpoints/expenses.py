@@ -29,6 +29,8 @@ from app.models.finance import (
     CostCentre, ExpenseCategory, Expense, ExpenseAllocation
 )
 from app.models.master_data import MasterExpenseCategory
+from app.models.loans import PaymentVoucher
+from app.models.maintenance import MaintenanceTicket
 from app.schemas.finance import (
     CostCentreCreate, CostCentreUpdate, CostCentreResponse,
     ExpenseCategoryCreate, ExpenseCategoryUpdate, ExpenseCategoryResponse,
@@ -227,15 +229,25 @@ def create_expense(
                 )
 
     # Generate reference
-    count = db.query(Expense).count() + 1
-    ref = f"EXP-{datetime.now().strftime('%Y%m')}-{count:04d}"
+    # Use the highest existing sequence (not row count) so deletions never cause duplicates.
+    max_seq = 0
+    for (existing_ref,) in db.query(Expense.expense_reference).all():
+        try:
+            max_seq = max(max_seq, int(str(existing_ref).rsplit("-", 1)[-1]))
+        except (ValueError, TypeError):
+            continue
+    ref = f"EXP-{datetime.now().strftime('%Y%m')}-{max_seq + 1:04d}"
 
     # Create expense (exclude allocations from model_dump for direct model creation)
     expense_dict = data.model_dump(exclude={"allocations"})
+    # Expenses are issued directly on creation — no separate approval step.
+    now = datetime.utcnow()
     expense = Expense(
         **expense_dict,
         expense_reference=ref,
-        approval_status="Pending",
+        approval_status="Approved",
+        approved_by=current_user.user_id,
+        approved_at=now,
         created_by=current_user.user_id,
     )
     db.add(expense)
@@ -273,13 +285,23 @@ def update_expense(
     expense = db.query(Expense).filter(Expense.expense_id == expense_id).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
-    if expense.approval_status not in ("Pending", "Rejected"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot edit expense in status: {expense.approval_status}. Only Pending or Rejected expenses can be edited."
-        )
-
     update_dict = data.model_dump(exclude={"allocations"}, exclude_unset=True)
+    if "expense_class" in update_dict and update_dict["expense_class"] not in ("General", "Property"):
+        raise HTTPException(status_code=400, detail="expense_class must be 'General' or 'Property'")
+    new_class = update_dict.get("expense_class", expense.expense_class)
+    new_property = update_dict.get("property_id", expense.property_id)
+    if new_class == "Property" and not new_property:
+        raise HTTPException(status_code=400, detail="Property expenses must have a property_id")
+    if data.allocations:
+        pct_rows = [a for a in data.allocations if a.allocation_method == "Percentage"]
+        if pct_rows:
+            pct_sum = sum(float(a.allocation_percentage or 0) for a in pct_rows)
+            if abs(pct_sum - 100.0) > 0.01:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Allocation percentages must sum to 100% (currently {pct_sum:.2f}%)"
+                )
+
     for k, v in update_dict.items():
         setattr(expense, k, v)
 
@@ -297,6 +319,31 @@ def update_expense(
     db.commit()
     db.refresh(expense)
     return expense
+
+
+@router.delete("/{expense_id}", status_code=204, tags=["Expenses"])
+def delete_expense(
+    expense_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["Accountant", "Managing Director", "Administrator"])),
+):
+    expense = db.query(Expense).filter(Expense.expense_id == expense_id).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    # Detach records that reference this expense, then remove its allocations.
+    db.query(PaymentVoucher).filter(PaymentVoucher.expense_id == expense_id).update(
+        {PaymentVoucher.expense_id: None}, synchronize_session=False
+    )
+    db.query(MaintenanceTicket).filter(MaintenanceTicket.expense_id == expense_id).update(
+        {MaintenanceTicket.expense_id: None}, synchronize_session=False
+    )
+    db.query(ExpenseAllocation).filter(ExpenseAllocation.expense_id == expense_id).delete(
+        synchronize_session=False
+    )
+    db.delete(expense)
+    db.commit()
+    return None
 
 
 @router.post("/{expense_id}/approve", response_model=ExpenseResponse, tags=["Expenses"])

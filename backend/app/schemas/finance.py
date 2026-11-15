@@ -167,6 +167,8 @@ class ExpenseCreate(ExpenseBase):
 
 
 class ExpenseUpdate(BaseModel):
+    expense_class: Optional[str] = None
+    category_id: Optional[str] = None
     payee_name: Optional[str] = None
     description: Optional[str] = None
     invoice_date: Optional[date] = None
