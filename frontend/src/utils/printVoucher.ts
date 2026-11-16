@@ -98,6 +98,7 @@ export const printPaymentVoucher = (v: any) => {
       ${row('Paid To', v.payee_name)}
       ${row('Payee Type', v.payee_type)}
       ${row('Payment Method', v.payment_method)}
+      ${row('Paid From (Bank)', v.bank_name ? `${v.bank_name} — ${v.bank_account_name || ''} (${v.bank_account_number || ''})` : '')}
       ${row('Purpose', v.purpose)}
       ${row('Notes', v.notes)}
     </table>

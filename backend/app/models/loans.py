@@ -128,6 +128,10 @@ class PaymentVoucher(Base):
     payee_name          = Column(String(200), nullable=False)
     payee_type          = Column(String(50), nullable=True)
     # Supplier | Contractor | Bank | Loan Provider | Sister Company | Other
+    # Payee master record (suppliers table). payee_name is kept as a snapshot.
+    payee_id            = Column(String(36), ForeignKey("suppliers.supplier_id"), nullable=True, index=True)
+    # Company bank account the payment is issued from (null for Cash).
+    bank_account_id     = Column(String(36), ForeignKey("bank_accounts.account_id"), nullable=True, index=True)
 
     amount              = Column(Numeric(14, 2), nullable=False)
     currency            = Column(String(10), default="AED")
@@ -151,3 +155,18 @@ class PaymentVoucher(Base):
     notes               = Column(Text, nullable=True)
     created_at          = Column(DateTime, default=datetime.utcnow)
     updated_at          = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payee               = relationship("Supplier", lazy="joined")
+    bank_account        = relationship("BankAccount", lazy="joined")
+
+    @property
+    def bank_name(self):
+        return self.bank_account.bank_name if self.bank_account else None
+
+    @property
+    def bank_account_name(self):
+        return self.bank_account.account_name if self.bank_account else None
+
+    @property
+    def bank_account_number(self):
+        return self.bank_account.account_number if self.bank_account else None

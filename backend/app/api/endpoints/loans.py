@@ -21,7 +21,8 @@ from app.database.session import get_db
 from app.api.deps import get_current_active_user, require_roles
 from app.models.auth import User
 from app.models.loans import Loan, LoanInstalment, LoanDocument, PaymentVoucher
-from app.models.pdc import PDCIssued
+from app.models.pdc import PDCIssued, BankAccount
+from app.models.master_data import Supplier
 from app.schemas.loans import (
     LoanCreate, LoanUpdate, LoanResponse,
     LoanInstalmentCreate, LoanInstalmentUpdate, LoanInstalmentResponse,
@@ -32,6 +33,21 @@ from app.schemas.loans import (
 
 router = APIRouter()
 
+
+def _resolve_voucher_links(db: Session, fields: dict) -> None:
+    """Validate payee/bank FKs and keep payee_name in sync with the payee master record."""
+    if fields.get("payee_id"):
+        payee = db.query(Supplier).filter(Supplier.supplier_id == fields["payee_id"]).first()
+        if not payee:
+            raise HTTPException(status_code=400, detail="Selected payee not found")
+        fields["payee_name"] = payee.supplier_name
+    if fields.get("bank_account_id"):
+        if not db.query(BankAccount).filter(BankAccount.account_id == fields["bank_account_id"]).first():
+            raise HTTPException(status_code=400, detail="Selected bank account not found")
+    method = fields.get("payment_method")
+    if "bank_account_id" in fields and not fields.get("bank_account_id") and method and method != "Cash":
+        raise HTTPException(status_code=400, detail="Bank account is required unless payment method is Cash")
+
 # =============================================================================
 # Payment Vouchers
 # =============================================================================
@@ -41,6 +57,8 @@ def list_payment_vouchers(
     approval_status: Optional[str] = None,
     payee_type: Optional[str] = None,
     property_id: Optional[str] = None,
+    bank_account_id: Optional[str] = None,
+    payee_id: Optional[str] = None,
     skip: int = 0,
     limit: int = 5000,
     db: Session = Depends(get_db),
@@ -53,6 +71,10 @@ def list_payment_vouchers(
         q = q.filter(PaymentVoucher.payee_type == payee_type)
     if property_id:
         q = q.filter(PaymentVoucher.property_id == property_id)
+    if bank_account_id:
+        q = q.filter(PaymentVoucher.bank_account_id == bank_account_id)
+    if payee_id:
+        q = q.filter(PaymentVoucher.payee_id == payee_id)
     return q.order_by(PaymentVoucher.created_at.desc()).offset(skip).limit(limit).all()
 
 
@@ -70,9 +92,11 @@ def create_payment_voucher(
         except (ValueError, TypeError):
             continue
     voucher_no = f"PV-{datetime.now().strftime('%Y%m')}-{max_seq + 1:04d}"
+    fields = data.model_dump()
+    _resolve_voucher_links(db, fields)
     # Vouchers are issued directly on creation — no separate approval step.
     pv = PaymentVoucher(
-        **data.model_dump(),
+        **fields,
         voucher_number=voucher_no,
         approval_status="Approved",
         prepared_by=current_user.user_id,
@@ -96,6 +120,9 @@ def update_payment_voucher(
     if not pv:
         raise HTTPException(status_code=404, detail="Payment Voucher not found")
     updates = data.model_dump(exclude_unset=True)
+    if "bank_account_id" in updates:
+        updates.setdefault("payment_method", pv.payment_method)
+    _resolve_voucher_links(db, updates)
     if "payee_name" in updates and not (updates["payee_name"] or "").strip():
         raise HTTPException(status_code=400, detail="Payee name is required")
     if "amount" in updates and (updates["amount"] is None or updates["amount"] <= 0):

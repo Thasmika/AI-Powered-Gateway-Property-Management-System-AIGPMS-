@@ -124,6 +124,8 @@ class LoanResponse(LoanBase):
 class PaymentVoucherBase(BaseModel):
     payee_name: str
     payee_type: Optional[str] = None
+    payee_id: Optional[str] = None
+    bank_account_id: Optional[str] = None
     amount: Decimal
     currency: str = "AED"
     purpose: Optional[str] = None
@@ -142,6 +144,8 @@ class PaymentVoucherCreate(PaymentVoucherBase):
 class PaymentVoucherUpdate(BaseModel):
     payee_name: Optional[str] = None
     payee_type: Optional[str] = None
+    payee_id: Optional[str] = None
+    bank_account_id: Optional[str] = None
     amount: Optional[Decimal] = None
     currency: Optional[str] = None
     purpose: Optional[str] = None
@@ -166,6 +170,9 @@ class PaymentVoucherResponse(PaymentVoucherBase):
     voucher_id: str
     voucher_number: str
     approval_status: str
+    bank_name: Optional[str] = None
+    bank_account_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
     prepared_by: Optional[str] = None
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None

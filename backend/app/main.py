@@ -14,6 +14,10 @@ import app.models  # noqa: F401  — triggers models/__init__.py which imports a
 # Initialize Database tables (creates all 35+ tables if not exist)
 Base.metadata.create_all(bind=engine)
 
+# Add new columns to existing tables / backfill data (idempotent)
+from app.database.migrations import run_startup_migrations
+run_startup_migrations(engine)
+
 # Seed initial data (roles, default admin user) is now handled by deploy_app.sh or a startup script
 
 from contextlib import asynccontextmanager

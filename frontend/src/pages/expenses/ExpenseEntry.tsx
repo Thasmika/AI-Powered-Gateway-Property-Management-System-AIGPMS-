@@ -17,6 +17,8 @@ import CategoryIcon from '@mui/icons-material/Category';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 import api from '../../services/api';
 import { DebugErrorBoundary } from '../../components/DebugErrorBoundary';
 
@@ -605,8 +607,10 @@ const ExpenseEntry: React.FC = () => {
           {/* Invoice Date */}
           <Box>
             <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 0.5 }}>Invoice Date</Typography>
-            <TextField fullWidth type="date" value={form.invoice_date} onChange={e => handleChange('invoice_date', e.target.value)}
-              inputProps={{ style: { colorScheme: 'dark' } }} sx={inputSx} />
+            <DatePicker format="DD/MM/YYYY"
+            value={form.invoice_date ? dayjs(form.invoice_date) : null}
+            onChange={v => handleChange('invoice_date', v && v.isValid() ? v.format('YYYY-MM-DD') : '')}
+            slotProps={{ field: { clearable: true }, textField: { fullWidth: true, sx: inputSx } }} />
           </Box>
 
           {/* Invoice Number */}

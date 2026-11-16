@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 import PdfExportButton from '../../components/PdfExportButton';
 
 const statusColors: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info'> = {
@@ -221,12 +223,16 @@ const ExpenseList: React.FC = () => {
             <MenuItem value="">All</MenuItem>
             {['Pending', 'Approved', 'Rejected', 'On Hold'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </TextField>
-          <TextField size="small" label="From Date" type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ ...filterFieldSx, width: 200 }} />
-          <TextField size="small" label="To Date" type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ ...filterFieldSx, width: 200 }} />
+          <DatePicker label="From Date"
+            format="DD/MM/YYYY"
+            value={filterDateFrom ? dayjs(filterDateFrom) : null}
+            onChange={v => setFilterDateFrom(v && v.isValid() ? v.format('YYYY-MM-DD') : '')}
+            slotProps={{ field: { clearable: true }, textField: { size: 'small', sx: { ...filterFieldSx, width: 200 } } }} />
+          <DatePicker label="To Date"
+            format="DD/MM/YYYY"
+            value={filterDateTo ? dayjs(filterDateTo) : null}
+            onChange={v => setFilterDateTo(v && v.isValid() ? v.format('YYYY-MM-DD') : '')}
+            slotProps={{ field: { clearable: true }, textField: { size: 'small', sx: { ...filterFieldSx, width: 200 } } }} />
           <Button onClick={() => { setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }} size="small" sx={{ color: '#64748b' }}>
             Clear Filters
           </Button>

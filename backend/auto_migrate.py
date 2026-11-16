@@ -85,6 +85,11 @@ else:
     add_column_if_missing("suppliers", "contact_number",  "VARCHAR(50)")
     add_column_if_missing("suppliers", "email",           "VARCHAR(150)")
 
+print("\n--- Migrating payment_vouchers ---")
+add_column_if_missing("payment_vouchers", "payee_id",        "VARCHAR(36)")
+add_column_if_missing("payment_vouchers", "bank_account_id", "VARCHAR(36)")
+# (Legacy payee names are linked to supplier records automatically on app startup.)
+
 conn.commit()
 conn.close()
 print("\nMigration complete.")
