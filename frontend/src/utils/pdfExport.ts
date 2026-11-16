@@ -12,6 +12,7 @@
  * including any search / filters they have applied.
  *
  * Mark any element with  data-pdf-ignore  to leave it out of the PDF.
+ * Mark a field's value with  data-pdf-blank  to keep the label but print the value empty.
  */
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -120,6 +121,7 @@ function asLabelValue(el: Element): [string, string] | null {
   if (isHeadingTag(b) && !/MuiTypography-h6/.test(b.className)) return null;
   const label = textOf(a);
   if (!label || label.length > 60 || label.includes('\n')) return null;
+  if (b.hasAttribute('data-pdf-blank') || b.querySelector('[data-pdf-blank]')) return [label, ' '];
   const value = textOf(b);
   if (value.length > 600) return null;
   return [label, value];

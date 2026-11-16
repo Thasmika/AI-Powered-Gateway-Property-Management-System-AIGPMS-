@@ -85,10 +85,10 @@ const ExpenseDetail: React.FC = () => {
   if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
   if (!expense) return null;
 
-  const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  const InfoRow: React.FC<{ label: string; value: React.ReactNode; align?: 'left' | 'right'; pdfBlank?: boolean }> = ({ label, value, align = 'right', pdfBlank = false }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.8, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
       <Typography variant="body2" sx={{ color: '#64748b', minWidth: 160 }}>{label}</Typography>
-      <Typography variant="body2" sx={{ color: '#e2e8f0', fontWeight: 500, textAlign: 'right', flex: 1 }}>{value || '—'}</Typography>
+      <Typography variant="body2" sx={{ color: '#e2e8f0', fontWeight: 500, textAlign: align, flex: 1 }}>{pdfBlank ? <span data-pdf-blank>{value || '—'}</span> : (value || '—')}</Typography>
     </Box>
   );
 
@@ -147,21 +147,21 @@ const ExpenseDetail: React.FC = () => {
         <Grid item xs={12} md={7}>
           <Paper sx={{ p: 3, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', mb: 3 }}>
             <Typography variant="overline" sx={{ color: '#6366f1', fontWeight: 700, letterSpacing: 1.2, mb: 1.5, display: 'block' }}>Expense Information</Typography>
-            <InfoRow label="Payee / Supplier" value={expense.payee_name} />
-            <InfoRow label="Description" value={expense.description} />
-            <InfoRow label="Invoice Date" value={expense.invoice_date ? formatDate(expense.invoice_date) : '—'} />
-            <InfoRow label="Invoice Number" value={expense.invoice_number} />
-            <InfoRow label="Payment Method" value={expense.payment_method} />
-            <InfoRow label="Payment Voucher Ref" value={expense.payment_voucher_ref} />
+            <InfoRow align="left" label="Payee / Supplier" value={expense.payee_name} />
+            <InfoRow align="left" label="Description" value={expense.description} />
+            <InfoRow align="left" label="Invoice Date" value={expense.invoice_date ? formatDate(expense.invoice_date) : '—'} />
+            <InfoRow align="left" label="Invoice Number" value={expense.invoice_number} />
+            <InfoRow align="left" label="Payment Method" value={expense.payment_method} />
+            <InfoRow align="left" label="Payment Voucher Ref" value={expense.payment_voucher_ref} />
             {expense.expense_class === 'Property' && (
               <>
-                <InfoRow label="Property ID" value={expense.property_id} />
-                <InfoRow label="Unit ID" value={expense.unit_id} />
-                <InfoRow label="Maintenance Ticket" value={expense.maintenance_ticket_id} />
-                <InfoRow label="LPO Reference" value={expense.lpo_id} />
+                <InfoRow align="left" label="Property ID" value={expense.property_id} />
+                <InfoRow align="left" label="Unit ID" value={expense.unit_id} />
+                <InfoRow align="left" label="Maintenance Ticket" value={expense.maintenance_ticket_id} />
+                <InfoRow align="left" label="LPO Reference" value={expense.lpo_id} />
               </>
             )}
-            <InfoRow label="Notes" value={expense.notes} />
+            <InfoRow align="left" label="Notes" value={expense.notes} />
           </Paper>
 
           {/* Allocation Table */}
@@ -238,12 +238,12 @@ const ExpenseDetail: React.FC = () => {
             </Box>
             {expense.approved_by && (
               <Box mt={2} pt={2} sx={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                <InfoRow label="Approved/Rejected By" value={expense.approved_by} />
+                <InfoRow pdfBlank label="Approved/Rejected By" value={expense.approved_by} />
                 <InfoRow label="Action At" value={expense.approved_at ? formatDate(expense.approved_at) : '—'} />
               </Box>
             )}
             <Box mt={2} pt={2} sx={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <InfoRow label="Created By" value={expense.created_by} />
+              <InfoRow pdfBlank label="Created By" value={expense.created_by} />
               <InfoRow label="Created At" value={expense.created_at ? formatDate(expense.created_at) : '—'} />
             </Box>
           </Paper>

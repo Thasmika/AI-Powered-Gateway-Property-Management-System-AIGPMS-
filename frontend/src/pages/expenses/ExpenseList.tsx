@@ -170,6 +170,12 @@ const ExpenseList: React.FC = () => {
     </TableContainer>
   );
 
+  const filterFieldSx = {
+    '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' },
+    '& label': { color: '#94a3b8' },
+    '& input::-webkit-calendar-picker-indicator': { filter: 'invert(0.7)' },
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -204,36 +210,27 @@ const ExpenseList: React.FC = () => {
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 2, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={2}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <FilterListIcon sx={{ color: '#6366f1', fontSize: 20 }} />
-              <Typography variant="body2" fontWeight={600} sx={{ color: '#94a3b8' }}>Filters</Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={2}>
-            <TextField select fullWidth size="small" label="Status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              sx={{ '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }, '& label': { color: '#94a3b8' } }}>
-              <MenuItem value="">All</MenuItem>
-              {['Pending', 'Approved', 'Rejected', 'On Hold'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={2}>
-            <TextField fullWidth size="small" label="From Date" type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }, '& label': { color: '#94a3b8' } }} />
-          </Grid>
-          <Grid item xs={12} sm={2}>
-            <TextField fullWidth size="small" label="To Date" type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }, '& label': { color: '#94a3b8' } }} />
-          </Grid>
-          <Grid item xs={12} sm={2}>
-            <Button onClick={() => { setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }} size="small" sx={{ color: '#64748b' }}>
-              Clear Filters
-            </Button>
-          </Grid>
-        </Grid>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 90 }}>
+            <FilterListIcon sx={{ color: '#6366f1', fontSize: 20 }} />
+            <Typography variant="body2" sx={{ color: "#94a3b8", fontWeight: 600 }}>Filters</Typography>
+          </Box>
+          <TextField select size="small" label="Status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
+            sx={{ ...filterFieldSx, width: 200 }}>
+            <MenuItem value="">All</MenuItem>
+            {['Pending', 'Approved', 'Rejected', 'On Hold'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          </TextField>
+          <TextField size="small" label="From Date" type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ ...filterFieldSx, width: 200 }} />
+          <TextField size="small" label="To Date" type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ ...filterFieldSx, width: 200 }} />
+          <Button onClick={() => { setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }} size="small" sx={{ color: '#64748b' }}>
+            Clear Filters
+          </Button>
+        </Box>
       </Paper>
 
       {/* Tabs — PM Requirement: Side-by-side General | Property */}

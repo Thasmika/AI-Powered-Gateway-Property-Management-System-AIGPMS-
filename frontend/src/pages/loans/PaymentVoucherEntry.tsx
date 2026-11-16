@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Grid, Button, TextField, MenuItem, Chip,
   CircularProgress, Alert, Stack, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Tooltip,
-  Dialog, DialogTitle, DialogContent, DialogActions, Divider
+  Dialog, DialogTitle, DialogContent, DialogActions, Divider, InputAdornment
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReceiptIcon from '@mui/icons-material/Receipt';
@@ -12,10 +12,17 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
+import PrintIcon from '@mui/icons-material/Print';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
+import { printPaymentVoucher } from '../../utils/printVoucher';
+import PdfExportButton from '../../components/PdfExportButton';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import * as XLSX from 'xlsx';
 
 const statusColors: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
   Pending: 'warning', Approved: 'success', Rejected: 'error', Cancelled: 'default',
@@ -49,6 +56,14 @@ const PaymentVoucherEntry: React.FC = () => {
   const [viewTarget, setViewTarget] = useState<any | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [fPayeeType, setFPayeeType] = useState('');
+  const [fMethod, setFMethod] = useState('');
+  const [fStatus, setFStatus] = useState('');
+  const [fFrom, setFFrom] = useState('');
+  const [fTo, setFTo] = useState('');
 
   const canModify = ['Managing Director', 'Accountant', 'Administrator'].includes(role || '');
 
@@ -144,9 +159,24 @@ const PaymentVoucherEntry: React.FC = () => {
     }
   };
 
-  const totalAmount = vouchers.reduce((s, v) => s + parseFloat(v.amount || 0), 0);
+  const filtersActive = !!(search || fPayeeType || fMethod || fStatus || fFrom || fTo);
+  const clearFilters = () => { setSearch(''); setFPayeeType(''); setFMethod(''); setFStatus(''); setFFrom(''); setFTo(''); };
+
+  const filtered = vouchers.filter(v => {
+    const q = search.trim().toLowerCase();
+    if (q && ![v.voucher_number, v.payee_name, v.purpose, v.notes].some(x => String(x || '').toLowerCase().includes(q))) return false;
+    if (fPayeeType && v.payee_type !== fPayeeType) return false;
+    if (fMethod && v.payment_method !== fMethod) return false;
+    if (fStatus && v.approval_status !== fStatus) return false;
+    const d = v.created_at ? String(v.created_at).slice(0, 10) : '';
+    if (fFrom && (!d || d < fFrom)) return false;
+    if (fTo && (!d || d > fTo)) return false;
+    return true;
+  });
+
+  const totalAmount = filtered.reduce((s, v) => s + parseFloat(v.amount || 0), 0);
   const now = new Date();
-  const thisMonthCount = vouchers.filter(v => {
+  const thisMonthCount = filtered.filter(v => {
     const d = v.created_at ? new Date(v.created_at) : null;
     return d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   }).length;
@@ -156,6 +186,49 @@ const PaymentVoucherEntry: React.FC = () => {
     '& label': { color: '#94a3b8' },
     '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' },
     '& .MuiSvgIcon-root': { color: '#94a3b8' },
+  };
+
+  // ── Excel export of the vouchers currently shown (respects filters) ──
+  const handleExportExcel = () => {
+    if (filtered.length === 0) {
+      setActionMsg({ type: 'error', text: 'No vouchers to export for the selected filters' });
+      return;
+    }
+    const rows: any[] = filtered.map(v => ({
+      'Voucher #': v.voucher_number,
+      'Date': v.created_at ? formatDate(v.created_at) : '',
+      'Payee': v.payee_name || '',
+      'Payee Type': v.payee_type || '',
+      'Purpose': v.purpose || '',
+      'Payment Method': v.payment_method || '',
+      'Currency': v.currency || 'AED',
+      'Amount': parseFloat(v.amount || 0),
+      'Status': v.approval_status || '',
+      'Notes': v.notes || '',
+    }));
+    rows.push({ 'Voucher #': 'TOTAL', 'Amount': totalAmount });
+    const headers = Object.keys(rows[0]);
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+    ws['!cols'] = headers.map(h => ({
+      wch: Math.min(45, Math.max(h.length, ...rows.map(r => String(r[h] ?? '').length)) + 2),
+    }));
+    const amountCol = headers.indexOf('Amount');
+    for (let r = 1; r <= rows.length; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: amountCol })];
+      if (cell && cell.t === 'n') cell.z = '#,##0.00';
+    }
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Payment Vouchers');
+    const d = new Date();
+    const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    XLSX.writeFile(wb, `Payment_Vouchers_${stamp}.xlsx`);
+  };
+
+  const filterFieldSx = {
+    '& .MuiInputBase-root': { background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' },
+    '& label': { color: '#94a3b8' },
+    '& input::-webkit-calendar-picker-indicator': { filter: 'invert(0.7)' },
   };
 
   const dialogPaperSx = { background: '#1e2235', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 2 };
@@ -185,20 +258,31 @@ const PaymentVoucherEntry: React.FC = () => {
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ color: '#e2e8f0' }}>Payment Vouchers</Typography>
             <Typography variant="caption" sx={{ color: '#64748b' }}>
-              {vouchers.length} vouchers · AED {fmtAmount(totalAmount)} total
+              {filtersActive ? `${filtered.length} of ${vouchers.length}` : vouchers.length} vouchers · AED {fmtAmount(totalAmount)} total
             </Typography>
           </Box>
         </Box>
-        {canModify && (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }} data-pdf-ignore>
+          <PdfExportButton title="Payment Vouchers" fileName="Payment_Vouchers" sections={false} />
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openNew}
-            sx={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', fontWeight: 600, borderRadius: 2, px: 3 }}
+            variant="outlined"
+            onClick={handleExportExcel}
+            startIcon={<FileDownloadIcon />}
+            sx={{ color: '#10b981', borderColor: '#10b98166', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.08)' } }}
           >
-            New Voucher
+            Download Excel
           </Button>
-        )}
+          {canModify && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openNew}
+              sx={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', fontWeight: 600, borderRadius: 2, px: 3 }}
+            >
+              New Voucher
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {actionMsg && (
@@ -206,24 +290,57 @@ const PaymentVoucherEntry: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={2} mb={3}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
         {[
-          { label: 'Total Vouchers', value: vouchers.length, color: '#8b5cf6' },
+          { label: 'Total Vouchers', value: filtered.length, color: '#8b5cf6' },
           { label: 'Issued This Month', value: thisMonthCount, color: '#f59e0b' },
-          { label: 'Total Issued (AED)', value: `${(totalAmount / 1000).toFixed(0)}K`, color: '#22c55e' },
+          { label: 'Total Issued (AED)', value: fmtAmount(totalAmount), color: '#22c55e' },
         ].map(kpi => (
-          <Grid item xs={12} sm={4} key={kpi.label}>
-            <Paper sx={{ p: 2, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: `1px solid ${kpi.color}30`, textAlign: 'center' }}>
-              <Typography variant="h4" fontWeight={800} sx={{ color: kpi.color }}>{kpi.value}</Typography>
-              <Typography variant="caption" sx={{ color: '#64748b' }}>{kpi.label}</Typography>
-            </Paper>
-          </Grid>
+          <Paper key={kpi.label} sx={{ p: 2, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: `1px solid ${kpi.color}30`, textAlign: 'center' }}>
+            <Typography variant="h4" sx={{ color: kpi.color, fontWeight: 800 }}>{kpi.value}</Typography>
+            <Typography variant="caption" sx={{ color: '#64748b' }}>{kpi.label}</Typography>
+          </Paper>
         ))}
-      </Grid>
+      </Box>
+
+      {/* Filters */}
+      <Paper data-pdf-ignore sx={{ p: 2, mb: 2, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 90 }}>
+            <FilterListIcon sx={{ color: '#8b5cf6', fontSize: 20 }} />
+            <Typography variant="body2" sx={{ color: '#94a3b8', fontWeight: 600 }}>Filters</Typography>
+          </Box>
+          <TextField size="small" label="Search" placeholder="Voucher #, payee, purpose…" value={search} onChange={e => setSearch(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true }, input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#64748b' }} /></InputAdornment> } }}
+            sx={{ ...filterFieldSx, width: 260 }} />
+          <TextField select size="small" label="Payee Type" value={fPayeeType} onChange={e => setFPayeeType(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }} sx={{ ...filterFieldSx, width: 170 }}>
+            <MenuItem value="">All</MenuItem>
+            {PAYEE_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Payment Method" value={fMethod} onChange={e => setFMethod(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }} sx={{ ...filterFieldSx, width: 170 }}>
+            <MenuItem value="">All</MenuItem>
+            {PAYMENT_METHODS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Status" value={fStatus} onChange={e => setFStatus(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }} sx={{ ...filterFieldSx, width: 150 }}>
+            <MenuItem value="">All</MenuItem>
+            {Object.keys(statusColors).map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          </TextField>
+          <TextField size="small" label="From Date" type="date" value={fFrom} onChange={e => setFFrom(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }} sx={{ ...filterFieldSx, width: 170 }} />
+          <TextField size="small" label="To Date" type="date" value={fTo} onChange={e => setFTo(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }} sx={{ ...filterFieldSx, width: 170 }} />
+          <Button onClick={clearFilters} disabled={!filtersActive} size="small" sx={{ color: '#64748b' }}>
+            Clear Filters
+          </Button>
+        </Box>
+      </Paper>
 
       {/* New / Edit Voucher Form */}
       {showForm && (
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 2, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
+        <Paper data-pdf-ignore sx={{ p: 3, mb: 3, borderRadius: 2, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
           <Typography variant="overline" sx={{ color: '#8b5cf6', fontWeight: 700, letterSpacing: 1.5, mb: 2, display: 'block' }}>
             {editingId ? `Edit Payment Voucher ${vouchers.find(v => v.voucher_id === editingId)?.voucher_number || ''}` : 'New Payment Voucher'}
           </Typography>
@@ -276,11 +393,13 @@ const PaymentVoucherEntry: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {vouchers.length === 0 ? (
+              {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#64748b' }}>No payment vouchers yet</TableCell>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#64748b' }}>
+                    {vouchers.length === 0 ? 'No payment vouchers yet' : 'No vouchers match the selected filters'}
+                  </TableCell>
                 </TableRow>
-              ) : vouchers.map(v => (
+              ) : filtered.map(v => (
                 <TableRow key={v.voucher_id} sx={{ '& td': { borderBottom: '1px solid rgba(255,255,255,0.05)', py: 1.2 }, '&:hover': { background: 'rgba(139,92,246,0.05)' } }}>
                   <TableCell sx={{ color: '#8b5cf6', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.78rem' }}>{v.voucher_number}</TableCell>
                   <TableCell sx={{ color: '#e2e8f0', fontWeight: 500 }}>{v.payee_name}</TableCell>
@@ -297,6 +416,11 @@ const PaymentVoucherEntry: React.FC = () => {
                       <Tooltip title="View">
                         <IconButton size="small" onClick={() => setViewTarget(v)} sx={{ color: '#8b5cf6' }}>
                           <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Print">
+                        <IconButton size="small" onClick={() => printPaymentVoucher(v)} sx={{ color: '#22c55e' }}>
+                          <PrintIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       {canModify && (
@@ -337,6 +461,11 @@ const PaymentVoucherEntry: React.FC = () => {
           ))}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
+          {viewTarget && (
+            <Button startIcon={<PrintIcon />} onClick={() => printPaymentVoucher(viewTarget)} sx={{ color: '#22c55e' }}>
+              Print
+            </Button>
+          )}
           {canModify && viewTarget && (
             <Button startIcon={<EditIcon />} onClick={() => { const v = viewTarget; setViewTarget(null); openEdit(v); }} sx={{ color: '#f59e0b' }}>
               Edit
