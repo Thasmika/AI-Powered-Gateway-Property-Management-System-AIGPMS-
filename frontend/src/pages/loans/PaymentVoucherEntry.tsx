@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box, Typography, Paper, Grid, Button, TextField, MenuItem, Chip,
   CircularProgress, Alert, Stack, Table, TableBody, TableCell,
@@ -64,6 +64,7 @@ const PaymentVoucherEntry: React.FC = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -196,7 +197,7 @@ const PaymentVoucherEntry: React.FC = () => {
     });
     setFormError(null);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
   const handleSave = async () => {
@@ -487,13 +488,13 @@ const PaymentVoucherEntry: React.FC = () => {
 
       {/* New / Edit Voucher Form */}
       {showForm && (
-        <Paper data-pdf-ignore sx={{ p: 3, mb: 3, borderRadius: 2, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
+        <Paper ref={formRef} data-pdf-ignore sx={{ p: 3, mb: 3, borderRadius: 2, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.25)' }}>
           <Typography variant="overline" sx={{ color: '#8b5cf6', fontWeight: 700, letterSpacing: 1.5, mb: 2, display: 'block' }}>
             {editingId ? `Edit Payment Voucher ${vouchers.find(v => v.voucher_id === editingId)?.voucher_number || ''}` : 'New Payment Voucher'}
           </Typography>
           {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                 <Autocomplete
                   fullWidth
@@ -517,17 +518,17 @@ const PaymentVoucherEntry: React.FC = () => {
                 </Tooltip>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField select fullWidth label="Payee Type" value={form.payee_type} onChange={e => setForm(f => ({ ...f, payee_type: e.target.value }))} sx={inputSx}>
                 {PAYEE_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField select fullWidth label="Payment Method" value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))} sx={inputSx}>
                 {PAYMENT_METHODS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                 <Autocomplete
                   fullWidth
@@ -537,7 +538,7 @@ const PaymentVoucherEntry: React.FC = () => {
                   getOptionLabel={bankLabel}
                   isOptionEqualToValue={(o, v) => o.account_id === v.account_id}
                   noOptionsText="No bank accounts — click + to add one"
-                  renderInput={params => <TextField {...params} label={form.payment_method === 'Cash' ? 'Paid From (Bank)' : 'Paid From (Bank) *'} sx={inputSx} />}
+                  renderInput={params => <TextField {...params} label={form.payment_method === 'Cash' ? 'Paid From (Bank)' : 'Paid From (Bank) *'} error={!!formError && !form.bank_account_id && form.payment_method !== 'Cash'} helperText={!!formError && !form.bank_account_id && form.payment_method !== 'Cash' ? 'Required unless method is Cash' : undefined} sx={inputSx} />}
                 />
                 <Tooltip title="Add new bank account">
                   <IconButton onClick={openBankDialog} sx={{ mt: 1, color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.4)' }}>
@@ -546,11 +547,12 @@ const PaymentVoucherEntry: React.FC = () => {
                 </Tooltip>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={2}><TextField fullWidth label="Amount (AED) *" type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} sx={inputSx} /></Grid>
-            <Grid item xs={12} sm={4}><TextField fullWidth label="Purpose" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} sx={inputSx} /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} sx={inputSx} /></Grid>
+            <Grid size={{ xs: 12, sm: 2 }}><TextField fullWidth label="Amount (AED) *" type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} sx={inputSx} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label="Purpose" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} sx={inputSx} /></Grid>
+            <Grid size={12}><TextField fullWidth label="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} sx={inputSx} /></Grid>
           </Grid>
-          <Stack direction="row" spacing={2} mt={2.5} justifyContent="flex-end">
+          <Stack direction="row" spacing={2} mt={2.5} justifyContent="flex-end" alignItems="center">
+            {formError && <Typography variant="body2" sx={{ color: '#f87171', mr: 'auto' }}>{formError}</Typography>}
             <Button onClick={closeForm} sx={{ color: '#94a3b8' }}>Cancel</Button>
             <Button variant="contained" startIcon={saving ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <SaveIcon />} onClick={handleSave} disabled={saving}
               sx={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', fontWeight: 600, borderRadius: 2 }}>
