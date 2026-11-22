@@ -168,6 +168,7 @@ def list_expenses(
     property_id: Optional[str] = None,
     approval_status: Optional[str] = None,
     payment_method: Optional[str] = None,
+    payment_status: Optional[str] = Query(None, description="Unpaid | Partially Paid | Paid"),
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     skip: int = 0,
@@ -190,7 +191,10 @@ def list_expenses(
         q = q.filter(Expense.invoice_date >= date_from)
     if date_to:
         q = q.filter(Expense.invoice_date <= date_to)
-    return q.order_by(Expense.created_at.desc()).offset(skip).limit(limit).all()
+    rows = q.order_by(Expense.created_at.desc()).offset(skip).limit(limit).all()
+    if payment_status:
+        rows = [e for e in rows if e.payment_status == payment_status]
+    return rows
 
 
 @router.post("", response_model=ExpenseResponse, status_code=201, tags=["Expenses"])
@@ -302,6 +306,14 @@ def update_expense(
                     detail=f"Allocation percentages must sum to 100% (currently {pct_sum:.2f}%)"
                 )
 
+    if "total_amount" in update_dict and update_dict["total_amount"] is not None:
+        paid = expense.paid_amount
+        if Decimal(str(update_dict["total_amount"])) < paid - Decimal("0.005"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Total amount cannot be less than the AED {paid:,.2f} already paid by payment vouchers",
+            )
+
     for k, v in update_dict.items():
         setattr(expense, k, v)
 
@@ -331,10 +343,15 @@ def delete_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Detach records that reference this expense, then remove its allocations.
-    db.query(PaymentVoucher).filter(PaymentVoucher.expense_id == expense_id).update(
-        {PaymentVoucher.expense_id: None}, synchronize_session=False
-    )
+    # Payment vouchers belong to the expense — they must be removed first so no payment is orphaned.
+    voucher_count = db.query(PaymentVoucher).filter(PaymentVoucher.expense_id == expense_id).count()
+    if voucher_count:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Expense {expense.expense_reference} has {voucher_count} payment voucher(s). "
+                   "Delete its payment vouchers first.",
+        )
+    # Detach other records that reference this expense, then remove its allocations.
     db.query(MaintenanceTicket).filter(MaintenanceTicket.expense_id == expense_id).update(
         {MaintenanceTicket.expense_id: None}, synchronize_session=False
     )

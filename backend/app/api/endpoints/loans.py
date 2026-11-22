@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from decimal import Decimal
 
 from app.database.session import get_db
 from app.api.deps import get_current_active_user, require_roles
@@ -23,6 +24,7 @@ from app.models.auth import User
 from app.models.loans import Loan, LoanInstalment, LoanDocument, PaymentVoucher
 from app.models.pdc import PDCIssued, BankAccount
 from app.models.master_data import Supplier
+from app.models.finance import Expense
 from app.schemas.loans import (
     LoanCreate, LoanUpdate, LoanResponse,
     LoanInstalmentCreate, LoanInstalmentUpdate, LoanInstalmentResponse,
@@ -48,6 +50,30 @@ def _resolve_voucher_links(db: Session, fields: dict) -> None:
     if "bank_account_id" in fields and not fields.get("bank_account_id") and method and method != "Cash":
         raise HTTPException(status_code=400, detail="Bank account is required unless payment method is Cash")
 
+
+def _check_expense_link(db: Session, expense_id: Optional[str], amount, exclude_voucher_id: Optional[str] = None,
+                        fields: Optional[dict] = None) -> None:
+    """A voucher linked to an expense must not push total payments above the expense total."""
+    if not expense_id:
+        return
+    expense = db.query(Expense).filter(Expense.expense_id == expense_id).first()
+    if not expense:
+        raise HTTPException(status_code=400, detail="Linked expense not found")
+    if fields is not None and not fields.get("property_id") and expense.property_id:
+        fields["property_id"] = expense.property_id
+    other_paid = sum(
+        (Decimal(pv.amount or 0) for pv in expense.payment_vouchers
+         if pv.voucher_id != exclude_voucher_id and pv.approval_status not in Expense.VOID_VOUCHER_STATUSES),
+        Decimal("0"),
+    )
+    remaining = Decimal(expense.total_amount or 0) - other_paid
+    if Decimal(str(amount or 0)) > remaining + Decimal("0.005"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Amount exceeds the balance of expense {expense.expense_reference} "
+                   f"(balance AED {remaining:,.2f} of AED {Decimal(expense.total_amount or 0):,.2f})",
+        )
+
 # =============================================================================
 # Payment Vouchers
 # =============================================================================
@@ -59,12 +85,20 @@ def list_payment_vouchers(
     property_id: Optional[str] = None,
     bank_account_id: Optional[str] = None,
     payee_id: Optional[str] = None,
+    expense_id: Optional[str] = None,
+    unlinked: Optional[bool] = Query(None, description="true = only vouchers not linked to an expense"),
     skip: int = 0,
     limit: int = 5000,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     q = db.query(PaymentVoucher)
+    if expense_id:
+        q = q.filter(PaymentVoucher.expense_id == expense_id)
+    if unlinked is True:
+        q = q.filter(PaymentVoucher.expense_id.is_(None))
+    elif unlinked is False:
+        q = q.filter(PaymentVoucher.expense_id.isnot(None))
     if approval_status:
         q = q.filter(PaymentVoucher.approval_status == approval_status)
     if payee_type:
@@ -94,6 +128,9 @@ def create_payment_voucher(
     voucher_no = f"PV-{datetime.now().strftime('%Y%m')}-{max_seq + 1:04d}"
     fields = data.model_dump()
     _resolve_voucher_links(db, fields)
+    if fields.get("amount") is None or fields["amount"] <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    _check_expense_link(db, fields.get("expense_id"), fields["amount"], fields=fields)
     # Vouchers are issued directly on creation — no separate approval step.
     pv = PaymentVoucher(
         **fields,
@@ -127,6 +164,14 @@ def update_payment_voucher(
         raise HTTPException(status_code=400, detail="Payee name is required")
     if "amount" in updates and (updates["amount"] is None or updates["amount"] <= 0):
         raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    if "expense_id" in updates or "amount" in updates:
+        _check_expense_link(
+            db,
+            updates.get("expense_id", pv.expense_id),
+            updates.get("amount", pv.amount),
+            exclude_voucher_id=pv.voucher_id,
+            fields=updates if updates.get("expense_id") and updates["expense_id"] != pv.expense_id else None,
+        )
     for k, v in updates.items():
         setattr(pv, k, v)
     pv.updated_at = datetime.utcnow()

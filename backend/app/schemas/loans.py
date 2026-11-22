@@ -170,6 +170,7 @@ class PaymentVoucherResponse(PaymentVoucherBase):
     voucher_id: str
     voucher_number: str
     approval_status: str
+    expense_reference: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_name: Optional[str] = None
     bank_account_number: Optional[str] = None

@@ -38,7 +38,6 @@ import PaymentIcon from '@mui/icons-material/Payment';              // PDC Issue
 
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';    // Expenses
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; // Loans
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';      // Payment Vouchers
 import LocalAtmIcon from '@mui/icons-material/LocalAtm';             // Labour Camp Cash Receipts
 import SettingsIcon from '@mui/icons-material/Settings';              // Admin
 import HomeWorkIcon from '@mui/icons-material/HomeWork';              // Unit Register
@@ -86,8 +85,7 @@ const MainLayout: React.FC = () => {
       { text: 'PDC Received',              icon: <MoneyOffIcon />,             path: '/pdc/register',              roles: ['Managing Director', 'Accountant', 'Administrator'] },
       { text: 'PDC Issued',                icon: <PaymentIcon />,              path: '/pdc-issued',                roles: ['Managing Director', 'Accountant', 'Administrator'] },
 
-      { text: 'Expenses',                  icon: <RequestQuoteIcon />,         path: '/expenses',                  roles: ['Managing Director', 'Accountant', 'Administrator'] },
-      { text: 'Payment Vouchers',          icon: <ReceiptLongIcon />,          path: '/payment-vouchers',          roles: ['Managing Director', 'Accountant', 'Administrator'] },
+      { text: 'Expenses & PV',             icon: <RequestQuoteIcon />,         path: '/expenses',                  roles: ['Managing Director', 'Accountant', 'Administrator'] },
       { text: 'Loan Register',             icon: <AccountBalanceIcon />,       path: '/loans',                     roles: ['Managing Director', 'Accountant', 'Administrator'] },
       { text: 'Maintenance',               icon: <ConstructionIcon />,         path: '/maintenance',               roles: ['Managing Director', 'Accountant', 'Maintenance Staff', 'Administrator'] },
       { text: 'Labour Camp',               icon: <DomainIcon />,               path: '/labour-camp',               roles: ['Managing Director', 'Accountant', 'Camp Supervisor', 'Administrator'] },

@@ -64,8 +64,37 @@ def migrate_payment_voucher_links(engine: Engine) -> None:
         log.info("Linked %d payment vouchers to payee records", len(rows))
 
 
+def migrate_expense_voucher_links(engine: Engine) -> None:
+    """Index payment_vouchers.expense_id and link legacy vouchers via expenses.payment_voucher_ref."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_payment_vouchers_expense_id ON payment_vouchers (expense_id)"
+            ))
+    except Exception as e:
+        if "already exists" not in str(e).lower():
+            raise
+
+    # Before vouchers were linked by FK, the voucher number was typed into the expense.
+    with engine.begin() as conn:
+        rows = conn.execute(text(
+            "SELECT e.expense_id, pv.voucher_id FROM expenses e "
+            "JOIN payment_vouchers pv ON UPPER(TRIM(pv.voucher_number)) = UPPER(TRIM(e.payment_voucher_ref)) "
+            "WHERE pv.expense_id IS NULL AND e.payment_voucher_ref IS NOT NULL AND TRIM(e.payment_voucher_ref) <> ''"
+        )).fetchall()
+        for expense_id, voucher_id in rows:
+            conn.execute(text("UPDATE payment_vouchers SET expense_id = :eid WHERE voucher_id = :vid AND expense_id IS NULL"),
+                         {"eid": expense_id, "vid": voucher_id})
+        if rows:
+            log.info("Linked %d payment vouchers to expenses via payment_voucher_ref", len(rows))
+
+
 def run_startup_migrations(engine: Engine) -> None:
     try:
         migrate_payment_voucher_links(engine)
     except Exception:  # never block app startup on a migration problem
         log.exception("Payment voucher link migration failed")
+    try:
+        migrate_expense_voucher_links(engine)
+    except Exception:
+        log.exception("Expense ↔ payment voucher link migration failed")

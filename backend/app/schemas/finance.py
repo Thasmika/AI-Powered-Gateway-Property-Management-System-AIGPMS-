@@ -13,6 +13,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import date, datetime
 from decimal import Decimal
 
+from app.schemas.loans import PaymentVoucherResponse
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Cost Centre
@@ -205,6 +207,12 @@ class ExpenseResponse(ExpenseBase):
     created_at: datetime
     updated_at: datetime
     allocations: Optional[List[ExpenseAllocationResponse]] = None
+    # Settlement via linked payment vouchers (payment_vouchers.expense_id)
+    payment_vouchers: List[PaymentVoucherResponse] = []
+    voucher_count: int = 0
+    paid_amount: Decimal = Decimal("0")
+    balance_amount: Decimal = Decimal("0")
+    payment_status: str = "Unpaid"   # Unpaid | Partially Paid | Paid
     # Joined fields
     category_name: Optional[str] = None
     property_name: Optional[str] = None

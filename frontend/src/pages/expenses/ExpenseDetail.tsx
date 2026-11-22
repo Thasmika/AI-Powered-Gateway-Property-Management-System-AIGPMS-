@@ -16,6 +16,12 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
 import PdfExportButton from '../../components/PdfExportButton';
+import PaymentVoucherDialog, { fmtAmount } from '../../components/PaymentVoucherDialog';
+import { printPaymentVoucher } from '../../utils/printVoucher';
+import PostAddIcon from '@mui/icons-material/PostAdd';
+import PrintIcon from '@mui/icons-material/Print';
+import EditIcon from '@mui/icons-material/Edit';
+import Tooltip from '@mui/material/Tooltip';
 
 const statusColors: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info'> = {
   Pending: 'warning', Approved: 'success', Rejected: 'error', 'On Hold': 'info',
@@ -36,6 +42,8 @@ const ExpenseDetail: React.FC = () => {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [pvOpen, setPvOpen] = useState(false);
+  const [pvEditing, setPvEditing] = useState<any | null>(null);
 
   const fetchExpense = async () => {
     setLoading(true);
@@ -52,6 +60,7 @@ const ExpenseDetail: React.FC = () => {
   useEffect(() => { fetchExpense(); }, [expenseId]);
 
   const canApprove = role === 'Managing Director' || role === 'Administrator';
+  const canModify = ['Managing Director', 'Accountant', 'Administrator'].includes(role || '');
 
   const handleApprove = async () => {
     setActionLoading(true);
@@ -84,6 +93,9 @@ const ExpenseDetail: React.FC = () => {
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}><CircularProgress sx={{ color: '#6366f1' }} /></Box>;
   if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
   if (!expense) return null;
+
+  const totalAmt = parseFloat(expense.total_amount || 0);
+  const paidPct = totalAmt > 0 ? Math.min(100, (parseFloat(expense.paid_amount || 0) / totalAmt) * 100) : 0;
 
   const InfoRow: React.FC<{ label: string; value: React.ReactNode; align?: 'left' | 'right'; pdfBlank?: boolean }> = ({ label, value, align = 'right', pdfBlank = false }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.8, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -152,7 +164,7 @@ const ExpenseDetail: React.FC = () => {
             <InfoRow align="left" label="Invoice Date" value={expense.invoice_date ? formatDate(expense.invoice_date) : '—'} />
             <InfoRow align="left" label="Invoice Number" value={expense.invoice_number} />
             <InfoRow align="left" label="Payment Method" value={expense.payment_method} />
-            <InfoRow align="left" label="Payment Voucher Ref" value={expense.payment_voucher_ref} />
+            {expense.payment_voucher_ref && <InfoRow align="left" label="Legacy PV Ref" value={expense.payment_voucher_ref} />}
             {expense.expense_class === 'Property' && (
               <>
                 <InfoRow align="left" label="Property ID" value={expense.property_id} />
@@ -216,6 +228,16 @@ const ExpenseDetail: React.FC = () => {
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mb: 2 }} />
             <InfoRow label="Base Amount" value={`AED ${parseFloat(expense.amount || 0).toLocaleString('en-AE', { minimumFractionDigits: 2 })}`} />
             <InfoRow label="Tax Amount" value={`AED ${parseFloat(expense.tax_amount || 0).toLocaleString('en-AE', { minimumFractionDigits: 2 })}`} />
+            <InfoRow label={`Paid (${expense.voucher_count || 0} PV)`} value={`AED ${fmtAmount(expense.paid_amount)}`} />
+            <InfoRow label="Balance" value={`AED ${fmtAmount(expense.balance_amount)}`} />
+            <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
+              <Chip size="small" label={expense.payment_status}
+                color={expense.payment_status === 'Paid' ? 'success' : expense.payment_status === 'Partially Paid' ? 'warning' : 'error'}
+                sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
+              <Typography variant="caption" sx={{ color: '#64748b' }}>{paidPct.toFixed(0)}% paid</Typography>
+            </Box>
+            <LinearProgress variant="determinate" value={paidPct}
+              sx={{ mt: 0.8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', '& .MuiLinearProgress-bar': { background: '#22c55e' } }} />
           </Paper>
 
           <Paper sx={{ p: 3, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -249,6 +271,75 @@ const ExpenseDetail: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Payment Vouchers issued under this expense */}
+      <Paper sx={{ p: 3, mt: 3, borderRadius: 2, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(139,92,246,0.25)' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+          <Typography variant="overline" sx={{ color: '#8b5cf6', fontWeight: 700, letterSpacing: 1.2 }}>
+            Payment Vouchers ({expense.voucher_count || 0})
+          </Typography>
+          {canModify && parseFloat(expense.balance_amount || 0) > 0 && (
+            <Button size="small" variant="contained" startIcon={<PostAddIcon />} data-pdf-ignore
+              onClick={() => { setPvEditing(null); setPvOpen(true); }}
+              sx={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', fontWeight: 600, borderRadius: 2 }}>
+              Add Payment Voucher
+            </Button>
+          )}
+        </Box>
+        {(expense.payment_vouchers || []).length === 0 ? (
+          <Typography variant="body2" sx={{ color: '#64748b' }}>No payment vouchers issued for this expense yet.</Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { color: '#94a3b8', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.08)' } }}>
+                  <TableCell>No</TableCell>
+                  <TableCell>Voucher #</TableCell>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Payee</TableCell>
+                  <TableCell>Paid From</TableCell>
+                  <TableCell>Method</TableCell>
+                  <TableCell align="right">Amount (AED)</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="center" data-pdf-ignore>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {expense.payment_vouchers.map((v: any, i: number) => (
+                  <TableRow key={v.voucher_id} sx={{ '& td': { borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e2e8f0' } }}>
+                    <TableCell sx={{ color: '#64748b !important' }}>{i + 1}</TableCell>
+                    <TableCell sx={{ color: '#a78bfa !important', fontFamily: 'monospace', fontWeight: 600 }}>{v.voucher_number}</TableCell>
+                    <TableCell>{v.created_at ? formatDate(v.created_at) : '—'}</TableCell>
+                    <TableCell>{v.payee_name}</TableCell>
+                    <TableCell>{v.bank_name ? `${v.bank_name} (${v.bank_account_number || ''})` : '—'}</TableCell>
+                    <TableCell>{v.payment_method || '—'}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>{fmtAmount(v.amount)}</TableCell>
+                    <TableCell><Chip size="small" label={v.approval_status} color={statusColors[v.approval_status] || 'default'} sx={{ fontWeight: 600, fontSize: '0.68rem' }} /></TableCell>
+                    <TableCell align="center" data-pdf-ignore>
+                      <Tooltip title="Print"><IconButton size="small" onClick={() => printPaymentVoucher(v)} sx={{ color: '#22c55e' }}><PrintIcon fontSize="small" /></IconButton></Tooltip>
+                      {canModify && (
+                        <Tooltip title="Edit"><IconButton size="small" onClick={() => { setPvEditing(v); setPvOpen(true); }} sx={{ color: '#f59e0b' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+
+      <PaymentVoucherDialog
+        open={pvOpen}
+        expense={expense}
+        voucher={pvEditing}
+        onClose={() => setPvOpen(false)}
+        onSaved={(pv, isEdit) => {
+          setPvOpen(false);
+          setActionMsg({ type: 'success', text: isEdit ? `Payment voucher ${pv.voucher_number} updated` : `Payment voucher ${pv.voucher_number} issued` });
+          fetchExpense();
+        }}
+      />
 
       {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}

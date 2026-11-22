@@ -158,6 +158,11 @@ class PaymentVoucher(Base):
 
     payee               = relationship("Supplier", lazy="joined")
     bank_account        = relationship("BankAccount", lazy="joined")
+    expense             = relationship("Expense", back_populates="payment_vouchers")
+
+    @property
+    def expense_reference(self):
+        return self.expense.expense_reference if self.expense else None
 
     @property
     def bank_name(self):

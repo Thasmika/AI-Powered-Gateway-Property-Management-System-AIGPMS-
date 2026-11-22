@@ -9,6 +9,7 @@ PM Decision: Two primary expense classes —
   B. Property-Related   — directly attributable to a property or unit
 """
 
+import builtins
 import uuid
 from datetime import datetime
 from sqlalchemy import (
@@ -117,6 +118,37 @@ class Expense(Base):
     property                = relationship("Property", back_populates="expenses")
     allocations             = relationship("ExpenseAllocation", back_populates="expense",
                                            cascade="all, delete-orphan")
+    # One expense is settled by one or more payment vouchers (payment_vouchers.expense_id).
+    payment_vouchers        = relationship("PaymentVoucher", back_populates="expense",
+                                           order_by="PaymentVoucher.created_at", lazy="selectin")
+
+    # Vouchers that no longer count towards settlement.
+    VOID_VOUCHER_STATUSES = ("Rejected", "Cancelled")
+
+    @builtins.property
+    def paid_amount(self):
+        from decimal import Decimal
+        return sum(
+            (Decimal(pv.amount or 0) for pv in self.payment_vouchers
+             if pv.approval_status not in self.VOID_VOUCHER_STATUSES),
+            Decimal("0"),
+        )
+
+    @builtins.property
+    def balance_amount(self):
+        from decimal import Decimal
+        return Decimal(self.total_amount or 0) - self.paid_amount
+
+    @builtins.property
+    def voucher_count(self):
+        return len(self.payment_vouchers)
+
+    @builtins.property
+    def payment_status(self):
+        paid = self.paid_amount
+        if paid <= 0:
+            return "Unpaid"
+        return "Paid" if self.balance_amount <= 0 else "Partially Paid"
 
 
 class ExpenseAllocation(Base):

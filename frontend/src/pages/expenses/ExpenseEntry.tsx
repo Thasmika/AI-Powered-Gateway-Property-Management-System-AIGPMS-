@@ -631,9 +631,6 @@ const ExpenseEntry: React.FC = () => {
           <TextField fullWidth label="Total Amount (AED)" value={form.total_amount} InputProps={{ readOnly: true }}
             sx={{ ...inputSx, '& .MuiInputBase-root': { ...inputSx['& .MuiInputBase-root'], background: 'rgba(99,102,241,0.08)', fontWeight: 700 } }} />
 
-          {/* Payment Voucher Ref */}
-          <TextField fullWidth label="Payment Voucher Ref" value={form.payment_voucher_ref} onChange={e => handleChange('payment_voucher_ref', e.target.value)} sx={inputSx} />
-
           {/* Notes */}
           <TextField fullWidth label="Notes" value={form.notes} onChange={e => handleChange('notes', e.target.value)} sx={inputSx} />
 

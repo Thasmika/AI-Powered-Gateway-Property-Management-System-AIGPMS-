@@ -54,12 +54,11 @@ import PDCIssuedDetail from './pages/pdc/PDCIssuedDetail';
 
 
 // Sprint 7 — Expenses, Finance & Loans
-import ExpenseList from './pages/expenses/ExpenseList';
+import ExpensesAndPV from './pages/expenses/ExpensesAndPV';
 import ExpenseEntry from './pages/expenses/ExpenseEntry';
 import ExpenseDetail from './pages/expenses/ExpenseDetail';
 import LoanList from './pages/loans/LoanList';
 import LoanDetail from './pages/loans/LoanDetail';
-import PaymentVoucherEntry from './pages/loans/PaymentVoucherEntry';
 
 // Sprint 8 — Maintenance Management
 import MaintenanceList from './pages/maintenance/MaintenanceList';
@@ -385,7 +384,7 @@ const App: React.FC = () => {
                 path="expenses"
                 element={
                   <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <ExpenseList />
+                    <ExpensesAndPV />
                   </ProtectedRoute>
                 }
               />
@@ -437,14 +436,8 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="payment-vouchers"
-                element={
-                  <ProtectedRoute allowedRoles={['Managing Director', 'Accountant', 'Administrator']}>
-                    <PaymentVoucherEntry />
-                  </ProtectedRoute>
-                }
-              />
+              {/* Payment vouchers now live under Expenses & PV */}
+              <Route path="payment-vouchers" element={<Navigate to="/expenses?tab=pv" replace />} />
 
               {/* ── Operations — Maintenance (Sprint 8) ─────────────────── */}
               <Route
